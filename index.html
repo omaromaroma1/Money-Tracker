@@ -5,29 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Money Tracker</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="apple-touch-icon" href="logo-dark.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Money Tracker">
+    <meta name="theme-color" content="#1a1a1a">
 </head>
 <body>
     <div class="container">
         <header>
             <div class="header-content">
-                <div>
-                    <h1>💰 Money Tracker</h1>
-                    <p>Track your income and expenses</p>
+                <div class="header-logo-section">
+                    <img id="appLogo" src="logo-light.png" alt="Money Tracker Logo" class="app-logo">
+                    <div>
+                        <h1>Money Tracker</h1>
+                        <p>Track your income and expenses</p>
+                    </div>
                 </div>
-                <button class="btn-theme-toggle" onclick="tracker.toggleTheme()" title="Toggle theme">
-                    <span class="theme-icon">🌙</span>
-                </button>
+                <div class="header-buttons">
+                    <button class="btn-theme-toggle" onclick="tracker.toggleTheme()" title="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button class="btn-settings" onclick="tracker.openSettings()" title="Settings">
+                        <span>⚙️</span>
+                    </button>
+                </div>
             </div>
         </header>
 
         <div class="main-content">
             <!-- Add/Remove Money Form -->
             <section class="form-section">
-                <h2>💰 Add or Spend Money</h2>
+                <h2>💰 <span data-i18n="addSpend">Add or Spend Money</span></h2>
                 <form id="transactionForm">
                     <div class="form-group">
-                        <label for="amount">Amount ($)</label>
-                        <input type="text" id="amount" placeholder="0.00" inputmode="none" required>
+                        <label for="amount" data-i18n="amount">Amount ($)</label>
+                        <input type="text" id="amount" placeholder="0.00" inputmode="none" autocomplete="off" required>
                         <div id="numberPad" class="number-pad" style="display: none;">
                             <div class="pad-grid">
                                 <button type="button" class="pad-btn" onclick="tracker.addToAmount('7')">7</button>
@@ -48,7 +61,7 @@
                     </div>
 
                     <div class="form-group" id="categoryGroup" style="display: none;">
-                        <label for="category">Choose Category</label>
+                        <label for="category" data-i18n="chooseCategory">Choose Category</label>
                         <div id="categoryPills" class="category-pills"></div>
                         <select id="category" style="display: none;">
                             <option value="">Select category</option>
@@ -56,23 +69,23 @@
                     </div>
 
                     <div class="button-group">
-                        <button type="button" class="btn-add" onclick="tracker.submitForm('add')">+ Add Money</button>
-                        <button type="button" class="btn-spend" onclick="tracker.submitForm('spend')">- Spend Money</button>
+                        <button type="button" class="btn-add" onclick="tracker.submitForm('add')" data-i18n="addMoney">+ Add Money</button>
+                        <button type="button" class="btn-spend" onclick="tracker.submitForm('spend')" data-i18n="spendMoney">- Spend Money</button>
                     </div>
                 </form>
 
                 <div class="categories-manager">
-                    <button class="btn-manage-categories" onclick="tracker.toggleCategoriesManager()">⚙️ Manage Categories</button>
+                    <button class="btn-manage-categories" onclick="tracker.toggleCategoriesManager()" data-i18n="manageCategories">⚙️ Manage Categories</button>
                     <div id="categoriesManagerPanel" style="display: none;" class="categories-panel-overlay">
                         <div class="categories-panel">
                             <div class="categories-panel-header">
-                                <h3>Edit Categories</h3>
+                                <h3 data-i18n="editCategories">Edit Categories</h3>
                                 <button type="button" class="close-btn" onclick="tracker.toggleCategoriesManager()">✕</button>
                             </div>
                             <div class="categories-panel-content">
                                 <div class="category-input-group">
-                                    <input type="text" id="newCategoryInput" placeholder="Add new category" maxlength="20">
-                                    <button type="button" class="btn-add-category" onclick="tracker.addCategory()">+ Add</button>
+                                    <input type="text" id="newCategoryInput" placeholder="Add new category" maxlength="20" data-i18n-placeholder="addNewCategory">
+                                    <button type="button" class="btn-add-category" onclick="tracker.addCategory()" data-i18n="addBtn">+ Add</button>
                                 </div>
                                 <div id="categoriesList" class="categories-list"></div>
                             </div>
@@ -84,19 +97,19 @@
             <!-- Summary Section -->
             <section class="summary">
                 <div class="summary-card balance" onclick="tracker.openHistory()" style="cursor: pointer;">
-                    <h3>Current Balance</h3>
+                    <h3 data-i18n="balance">Current Balance</h3>
                     <p class="amount" id="totalBalance">$0.00</p>
-                    <p class="click-hint">👆 Click to see history</p>
+                    <p class="click-hint">👆 <span data-i18n="clickHint">Click to see history</span></p>
                 </div>
                 <div class="summary-card stats">
-                    <h3>This Month</h3>
+                    <h3 data-i18n="thisMonth">This Month</h3>
                     <div class="month-stats">
                         <div class="stat-item">
-                            <span class="stat-label">Spent</span>
+                            <span class="stat-label" data-i18n="spent">Spent</span>
                             <span class="stat-value" id="monthlySpent">$0.00</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">Added</span>
+                            <span class="stat-label" data-i18n="added">Added</span>
                             <span class="stat-value" id="monthlyAdded">$0.00</span>
                         </div>
                     </div>
@@ -108,11 +121,11 @@
                 <div class="history-modal-overlay" onclick="tracker.closeHistory()"></div>
                 <div class="history-modal-content">
                     <div class="history-modal-header">
-                        <h2>📊 Transaction History</h2>
+                        <h2 data-i18n="history">📊 Transaction History</h2>
                         <button class="close-btn" onclick="tracker.closeHistory()">✕</button>
                     </div>
                     <div class="history-search">
-                        <input type="text" id="historySearchInput" placeholder="Search transactions..." onkeyup="tracker.filterTransactionsInModal()">
+                        <input type="text" id="historySearchInput" placeholder="Search transactions..." onkeyup="tracker.filterTransactionsInModal()" data-i18n-placeholder="search">
                     </div>
                     <div id="historyTransactionsList" class="history-transactions-list">
                         <p class="empty-state">No transactions yet</p>
@@ -125,28 +138,76 @@
                 <div class="history-modal-overlay" onclick="tracker.closeEditModal()"></div>
                 <div class="history-modal-content edit-modal-content">
                     <div class="history-modal-header">
-                        <h2>✏️ Edit Transaction</h2>
+                        <h2 data-i18n="editTx">✏️ Edit Transaction</h2>
                         <button class="close-btn" onclick="tracker.closeEditModal()">✕</button>
                     </div>
                     <div class="edit-form">
                         <div class="form-group">
-                            <label>Description</label>
+                            <label data-i18n="description">Description</label>
                             <input type="text" id="editDescription" placeholder="Description">
                         </div>
                         <div class="form-group">
-                            <label>Amount ($)</label>
+                            <label data-i18n="amount">Amount ($)</label>
                             <input type="number" id="editAmount" placeholder="0.00" step="0.01" min="0">
                         </div>
                         <div class="form-group" id="editCategoryGroup">
-                            <label>Category</label>
+                            <label data-i18n="category">Category</label>
                             <select id="editCategory">
                                 <option value="">Select category</option>
                             </select>
                         </div>
                         <div class="edit-actions">
-                            <button type="button" class="btn-save" onclick="tracker.saveEdit()">Save</button>
-                            <button type="button" class="btn-delete-edit" onclick="tracker.deleteFromEdit()">Delete</button>
-                            <button type="button" class="btn-cancel" onclick="tracker.closeEditModal()">Cancel</button>
+                            <button type="button" class="btn-save" onclick="tracker.saveEdit()" data-i18n="save">Save</button>
+                            <button type="button" class="btn-delete-edit" onclick="tracker.deleteFromEdit()" data-i18n="delete">Delete</button>
+                            <button type="button" class="btn-cancel" onclick="tracker.closeEditModal()" data-i18n="cancel">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Modal -->
+            <div id="settingsModal" class="history-modal" style="display: none;">
+                <div class="history-modal-overlay" onclick="tracker.closeSettings()"></div>
+                <div class="history-modal-content settings-modal-content">
+                    <div class="history-modal-header">
+                        <h2 data-i18n="settings">⚙️ Settings</h2>
+                        <button class="close-btn" onclick="tracker.closeSettings()">✕</button>
+                    </div>
+                    <div class="settings-content">
+                        <div class="setting-group">
+                            <label data-i18n="language">Language</label>
+                            <div class="language-options">
+                                <button class="lang-btn" onclick="tracker.setLanguage('en')" data-lang="en">English</button>
+                                <button class="lang-btn" onclick="tracker.setLanguage('es')" data-lang="es">Español</button>
+                                <button class="lang-btn" onclick="tracker.setLanguage('fr')" data-lang="fr">Français</button>
+                                <button class="lang-btn" onclick="tracker.setLanguage('ar')" data-lang="ar">العربية</button>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <div class="toggle-label-wrapper">
+                                <span data-i18n="useNumberPad">Use Virtual Number Pad</span>
+                                <label for="numberPadToggle" class="toggle-switch">
+                                    <input type="checkbox" id="numberPadToggle" onchange="tracker.toggleNumberPadOption()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <button class="btn-reset-balance" id="resetBalanceBtn" onclick="tracker.handleResetClick()" data-i18n="resetBalance">Reset Balance</button>
+                        </div>
+                        <div class="setting-group">
+                            <label data-i18n="currency">Currency</label>
+                            <div class="currency-options">
+                                <button class="currency-btn" onclick="tracker.setCurrency('USD')" data-currency="USD">$ USD</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('EUR')" data-currency="EUR">€ EUR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('GBP')" data-currency="GBP">£ GBP</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('QAR')" data-currency="QAR">ر.ق QAR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('AED')" data-currency="AED">د.إ AED</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('SAR')" data-currency="SAR">﷼ SAR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('EGP')" data-currency="EGP">£ EGP</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('INR')" data-currency="INR">₹ INR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('JPY')" data-currency="JPY">¥ JPY</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -154,18 +215,18 @@
 
             <!-- Statistics Section -->
             <section class="stats-section">
-                <h2>Quick Stats</h2>
+                <h2 data-i18n="quickStats">Quick Stats</h2>
                 <div class="stats-grid">
                     <div class="stat-box">
-                        <div class="stat-label">Biggest Expense</div>
+                        <div class="stat-label" data-i18n="biggest">Biggest Expense</div>
                         <div class="stat-content" id="biggestExpense">-</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Total Transactions</div>
+                        <div class="stat-label" data-i18n="totalTx">Total Transactions</div>
                         <div class="stat-content" id="totalTransactions">0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-label">Daily Average</div>
+                        <div class="stat-label" data-i18n="daily">Daily Average</div>
                         <div class="stat-content" id="dailyAverage">$0.00</div>
                     </div>
                 </div>
@@ -173,7 +234,7 @@
 
             <!-- Category Breakdown Section -->
             <section class="breakdown-section">
-                <h2>Spending by Category</h2>
+                <h2 data-i18n="categoryBreakdown">Spending by Category</h2>
                 <div id="categoryBreakdown" class="category-breakdown">
                     <p class="empty-state">No spending yet</p>
                 </div>

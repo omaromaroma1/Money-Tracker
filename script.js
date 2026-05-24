@@ -3,10 +3,15 @@ class MoneyTracker {
         this.transactions = this.loadTransactions();
         this.categories = this.loadCategories();
         this.lastDeletedTransaction = null;
+        this.language = this.loadLanguage();
+        this.useNumberPad = this.loadNumberPadSetting();
+        this.currency = this.loadCurrency();
+        this.resetConfirmPending = false;
         this.initElements();
         this.setupEventListeners();
         this.initTheme();
         this.renderCategories();
+        this.updateLanguage();
         this.render();
     }
 
@@ -14,6 +19,7 @@ class MoneyTracker {
         const savedTheme = localStorage.getItem('moneyTrackerTheme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
         this.updateThemeIcon();
+        this.updateLogoTheme();
     }
 
     toggleTheme() {
@@ -22,6 +28,14 @@ class MoneyTracker {
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('moneyTrackerTheme', newTheme);
         this.updateThemeIcon();
+        this.updateLogoTheme();
+    }
+
+    updateLogoTheme() {
+        const appLogo = document.getElementById('appLogo');
+        if (appLogo) {
+            appLogo.src = 'logo-dark.png';
+        }
     }
 
     updateThemeIcon() {
@@ -52,6 +66,8 @@ class MoneyTracker {
         this.editAmount = document.getElementById('editAmount');
         this.editCategory = document.getElementById('editCategory');
         this.editingTransactionId = null;
+        this.settingsModal = document.getElementById('settingsModal');
+        this.numberPadToggle = document.getElementById('numberPadToggle');
     }
 
     setupEventListeners() {
@@ -67,7 +83,9 @@ class MoneyTracker {
             }
         });
         this.amountInput.addEventListener('focus', () => {
-            this.numberPad.style.display = 'block';
+            if (this.useNumberPad) {
+                this.numberPad.style.display = 'block';
+            }
         });
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.form-group') && !e.target.closest('.number-pad')) {
@@ -422,10 +440,30 @@ class MoneyTracker {
     }
 
     formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', {
+        const localeMap = {
+            'en': 'en-US',
+            'es': 'es-ES',
+            'fr': 'fr-FR',
+            'ar': 'ar-SA'
+        };
+        const locale = localeMap[this.language] || 'en-US';
+
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
-            currency: 'USD',
+            currency: this.currency || 'USD',
         }).format(amount);
+    }
+
+    formatNumber(num) {
+        const localeMap = {
+            'en': 'en-US',
+            'es': 'es-ES',
+            'fr': 'fr-FR',
+            'ar': 'ar-SA'
+        };
+        const locale = localeMap[this.language] || 'en-US';
+
+        return new Intl.NumberFormat(locale).format(num);
     }
 
     render() {
@@ -453,7 +491,7 @@ class MoneyTracker {
         document.getElementById('biggestExpense').textContent = biggestExpense
             ? `${biggestExpense.description}: ${this.formatCurrency(biggestExpense.amount)}`
             : '-';
-        document.getElementById('totalTransactions').textContent = this.transactions.length;
+        document.getElementById('totalTransactions').textContent = this.formatNumber(this.transactions.length);
         document.getElementById('dailyAverage').textContent = this.formatCurrency(this.getDailyAverage());
     }
 
@@ -487,6 +525,299 @@ class MoneyTracker {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    openSettings() {
+        this.settingsModal.style.display = 'block';
+        this.numberPadToggle.checked = this.useNumberPad;
+        this.updateLanguageButtons();
+        this.updateCurrencyButtons();
+    }
+
+    closeSettings() {
+        this.settingsModal.style.display = 'none';
+    }
+
+    setLanguage(lang) {
+        console.log('setLanguage called with:', lang);
+        this.language = lang;
+        localStorage.setItem('moneyTrackerLanguage', lang);
+        this.updateLanguage();
+        this.updateLanguageButtons();
+        this.render();
+        console.log('Language set to:', this.language);
+    }
+
+    updateLanguageButtons() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-lang') === this.language) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    toggleNumberPadOption() {
+        this.useNumberPad = this.numberPadToggle.checked;
+        localStorage.setItem('moneyTrackerUseNumberPad', JSON.stringify(this.useNumberPad));
+        this.numberPad.style.display = this.useNumberPad ? 'block' : 'none';
+    }
+
+    handleResetClick() {
+        const btn = document.getElementById('resetBalanceBtn');
+        if (!this.resetConfirmPending) {
+            this.resetConfirmPending = true;
+            const originalText = btn.textContent;
+            btn.textContent = '⚠️ Click again to confirm!';
+            btn.classList.add('confirm-click');
+            setTimeout(() => {
+                this.resetConfirmPending = false;
+                btn.textContent = originalText;
+                btn.classList.remove('confirm-click');
+            }, 3000);
+        } else {
+            this.resetConfirmPending = false;
+            this.transactions = [];
+            this.saveTransactions();
+            this.closeSettings();
+            this.render();
+            btn.classList.remove('confirm-click');
+            const originalText = btn.getAttribute('data-i18n') ? this.getTranslation('resetBalance') : 'Reset Balance';
+            btn.textContent = originalText;
+        }
+    }
+
+    getTranslation(key) {
+        const translations = {
+            en: { resetBalance: 'Reset Balance' },
+            es: { resetBalance: 'Reiniciar Saldo' },
+            fr: { resetBalance: 'Réinitialiser le Solde' },
+            ar: { resetBalance: 'إعادة تعيين الرصيد' }
+        };
+        return translations[this.language][key] || 'Reset Balance';
+    }
+
+    updateLanguage() {
+        const translations = {
+            en: {
+                addSpend: 'Add or Spend Money',
+                amount: 'Amount ($)',
+                chooseCategory: 'Choose Category',
+                addMoney: '+ Add Money',
+                spendMoney: '- Spend Money',
+                manageCategories: '⚙️ Manage Categories',
+                editCategories: 'Edit Categories',
+                addNewCategory: 'Add new category',
+                addBtn: '+ Add',
+                balance: 'Current Balance',
+                clickHint: 'Click to see history',
+                thisMonth: 'This Month',
+                spent: 'Spent',
+                added: 'Added',
+                quickStats: 'Quick Stats',
+                biggest: 'Biggest Expense',
+                totalTx: 'Total Transactions',
+                daily: 'Daily Average',
+                categoryBreakdown: 'Spending by Category',
+                history: 'Transaction History',
+                search: 'Search transactions...',
+                editTx: 'Edit Transaction',
+                description: 'Description',
+                category: 'Category',
+                save: 'Save',
+                delete: 'Delete',
+                cancel: 'Cancel',
+                settings: 'Settings',
+                language: 'Language',
+                currency: 'Currency',
+                useNumberPad: 'Use Virtual Number Pad',
+                undoBtn: 'Undo',
+                clearAll: 'Clear All',
+                resetBalance: 'Reset Balance'
+            },
+            es: {
+                addSpend: 'Agregar o Gastar Dinero',
+                amount: 'Cantidad ($)',
+                chooseCategory: 'Seleccionar Categoría',
+                addMoney: '+ Agregar Dinero',
+                spendMoney: '- Gastar Dinero',
+                manageCategories: '⚙️ Administrar Categorías',
+                editCategories: 'Editar Categorías',
+                addNewCategory: 'Agregar nueva categoría',
+                addBtn: '+ Agregar',
+                balance: 'Saldo Actual',
+                clickHint: 'Haz clic para ver el historial',
+                thisMonth: 'Este Mes',
+                spent: 'Gastado',
+                added: 'Agregado',
+                quickStats: 'Estadísticas Rápidas',
+                biggest: 'Gasto Más Grande',
+                totalTx: 'Transacciones Totales',
+                daily: 'Promedio Diario',
+                categoryBreakdown: 'Gasto por Categoría',
+                history: 'Historial de Transacciones',
+                search: 'Buscar transacciones...',
+                editTx: 'Editar Transacción',
+                description: 'Descripción',
+                category: 'Categoría',
+                save: 'Guardar',
+                delete: 'Eliminar',
+                cancel: 'Cancelar',
+                settings: 'Configuración',
+                language: 'Idioma',
+                currency: 'Moneda',
+                useNumberPad: 'Usar Teclado Numérico Virtual',
+                undoBtn: 'Deshacer',
+                clearAll: 'Limpiar Todo',
+                resetBalance: 'Reiniciar Saldo'
+            },
+            fr: {
+                addSpend: 'Ajouter ou Dépenser de l\'Argent',
+                amount: 'Montant ($)',
+                chooseCategory: 'Choisir une Catégorie',
+                addMoney: '+ Ajouter de l\'Argent',
+                spendMoney: '- Dépenser de l\'Argent',
+                manageCategories: '⚙️ Gérer les Catégories',
+                editCategories: 'Modifier les Catégories',
+                addNewCategory: 'Ajouter une nouvelle catégorie',
+                addBtn: '+ Ajouter',
+                balance: 'Solde Actuel',
+                clickHint: 'Cliquez pour voir l\'historique',
+                thisMonth: 'Ce Mois',
+                spent: 'Dépensé',
+                added: 'Ajouté',
+                quickStats: 'Statistiques Rapides',
+                biggest: 'Plus Grande Dépense',
+                totalTx: 'Transactions Totales',
+                daily: 'Moyenne Quotidienne',
+                categoryBreakdown: 'Dépenses par Catégorie',
+                history: 'Historique des Transactions',
+                search: 'Rechercher des transactions...',
+                editTx: 'Modifier la Transaction',
+                description: 'Description',
+                category: 'Catégorie',
+                save: 'Enregistrer',
+                delete: 'Supprimer',
+                cancel: 'Annuler',
+                settings: 'Paramètres',
+                language: 'Langue',
+                currency: 'Devise',
+                useNumberPad: 'Utiliser le Clavier Numérique Virtuel',
+                undoBtn: 'Annuler',
+                clearAll: 'Tout Effacer',
+                resetBalance: 'Réinitialiser le Solde'
+            },
+            ar: {
+                addSpend: 'إضافة أو إنفاق الأموال',
+                amount: 'المبلغ ($)',
+                chooseCategory: 'اختر الفئة',
+                addMoney: '+ إضافة أموال',
+                spendMoney: '- إنفاق الأموال',
+                manageCategories: '⚙️ إدارة الفئات',
+                editCategories: 'تعديل الفئات',
+                addNewCategory: 'إضافة فئة جديدة',
+                addBtn: '+ إضافة',
+                balance: 'الرصيد الحالي',
+                clickHint: 'انقر لمشاهدة السجل',
+                thisMonth: 'هذا الشهر',
+                spent: 'مصروف',
+                added: 'مضاف',
+                quickStats: 'إحصائيات سريعة',
+                biggest: 'أكبر نفقة',
+                totalTx: 'إجمالي المعاملات',
+                daily: 'المتوسط اليومي',
+                categoryBreakdown: 'الإنفاق حسب الفئة',
+                history: 'سجل المعاملات',
+                search: 'البحث عن المعاملات...',
+                editTx: 'تعديل المعاملة',
+                description: 'الوصف',
+                category: 'الفئة',
+                save: 'حفظ',
+                delete: 'حذف',
+                cancel: 'إلغاء',
+                settings: 'الإعدادات',
+                language: 'اللغة',
+                currency: 'العملة',
+                useNumberPad: 'استخدام لوحة الأرقام الافتراضية',
+                undoBtn: 'تراجع',
+                clearAll: 'مسح الكل',
+                resetBalance: 'إعادة تعيين الرصيد'
+            }
+        };
+
+        const t = translations[this.language] || translations.en;
+        console.log('Translating with:', Object.keys(t).length, 'keys');
+
+        // Update all elements with data-i18n attribute
+        const elements = document.querySelectorAll('[data-i18n]');
+        console.log('Found', elements.length, 'elements to translate');
+
+        elements.forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) {
+                const oldText = el.textContent;
+                // For labels with input children, replace text node only
+                if (el.tagName === 'LABEL' && el.querySelector('input')) {
+                    for (let i = 0; i < el.childNodes.length; i++) {
+                        if (el.childNodes[i].nodeType === 3) { // Text node
+                            el.childNodes[i].textContent = ' ' + t[key];
+                            break;
+                        }
+                    }
+                } else {
+                    el.textContent = t[key];
+                }
+                console.log('Updated:', key, 'from', oldText, 'to', t[key]);
+            }
+        });
+
+        // Update all elements with data-i18n-placeholder attribute
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (t[key]) {
+                el.placeholder = t[key];
+            }
+        });
+
+        // Set document direction for RTL languages
+        if (this.language === 'ar') {
+            document.documentElement.setAttribute('dir', 'rtl');
+        } else {
+            document.documentElement.setAttribute('dir', 'ltr');
+        }
+
+        console.log('✓ Language fully updated to:', this.language);
+    }
+
+    loadLanguage() {
+        return localStorage.getItem('moneyTrackerLanguage') || 'en';
+    }
+
+    loadNumberPadSetting() {
+        const saved = localStorage.getItem('moneyTrackerUseNumberPad');
+        return saved ? JSON.parse(saved) : true;
+    }
+
+    setCurrency(curr) {
+        console.log('setCurrency called with:', curr);
+        this.currency = curr;
+        localStorage.setItem('moneyTrackerCurrency', curr);
+        this.updateCurrencyButtons();
+        this.render();
+        console.log('Currency set to:', this.currency);
+    }
+
+    updateCurrencyButtons() {
+        document.querySelectorAll('.currency-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-currency') === this.currency) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    loadCurrency() {
+        return localStorage.getItem('moneyTrackerCurrency') || 'USD';
     }
 
     saveTransactions() {
