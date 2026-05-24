@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Start-Process *)",
+      "Bash(powershell *)",
+      "Bash(python *)",
+      "Bash(curl -s http://localhost:8000)",
+      "Bash(curl *)"
+    ]
+  }
+}

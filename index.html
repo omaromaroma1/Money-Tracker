@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>💰 Money Tracker</h1>
+                    <p>Track your income and expenses</p>
+                </div>
+                <button class="btn-theme-toggle" onclick="tracker.toggleTheme()" title="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Add/Remove Money Form -->
+            <section class="form-section">
+                <h2>💰 Add or Spend Money</h2>
+                <form id="transactionForm">
+                    <div class="form-group">
+                        <label for="amount">Amount ($)</label>
+                        <input type="text" id="amount" placeholder="0.00" required>
+                        <div id="numberPad" class="number-pad" style="display: none;">
+                            <div class="pad-grid">
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('7')">7</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('8')">8</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('9')">9</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('4')">4</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('5')">5</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('6')">6</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('1')">1</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('2')">2</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('3')">3</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('0')">0</button>
+                                <button type="button" class="pad-btn" onclick="tracker.addToAmount('.')">.</button>
+                                <button type="button" class="pad-btn delete" onclick="tracker.deleteFromAmount()">⌫</button>
+                            </div>
+                            <button type="button" class="pad-clear" onclick="tracker.clearAmount()">Clear All</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="categoryGroup" style="display: none;">
+                        <label for="category">Choose Category</label>
+                        <div id="categoryPills" class="category-pills"></div>
+                        <select id="category" style="display: none;">
+                            <option value="">Select category</option>
+                        </select>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" class="btn-add" onclick="tracker.submitForm('add')">+ Add Money</button>
+                        <button type="button" class="btn-spend" onclick="tracker.submitForm('spend')">- Spend Money</button>
+                    </div>
+                </form>
+
+                <div class="categories-manager">
+                    <button class="btn-manage-categories" onclick="tracker.toggleCategoriesManager()">⚙️ Manage Categories</button>
+                    <div id="categoriesManagerPanel" style="display: none;" class="categories-panel-overlay">
+                        <div class="categories-panel">
+                            <div class="categories-panel-header">
+                                <h3>Edit Categories</h3>
+                                <button type="button" class="close-btn" onclick="tracker.toggleCategoriesManager()">✕</button>
+                            </div>
+                            <div class="categories-panel-content">
+                                <div class="category-input-group">
+                                    <input type="text" id="newCategoryInput" placeholder="Add new category" maxlength="20">
+                                    <button type="button" class="btn-add-category" onclick="tracker.addCategory()">+ Add</button>
+                                </div>
+                                <div id="categoriesList" class="categories-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Summary Section -->
+            <section class="summary">
+                <div class="summary-card balance" onclick="tracker.openHistory()" style="cursor: pointer;">
+                    <h3>Current Balance</h3>
+                    <p class="amount" id="totalBalance">$0.00</p>
+                    <p class="click-hint">👆 Click to see history</p>
+                </div>
+                <div class="summary-card stats">
+                    <h3>This Month</h3>
+                    <div class="month-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Spent</span>
+                            <span class="stat-value" id="monthlySpent">$0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Added</span>
+                            <span class="stat-value" id="monthlyAdded">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Modal -->
+            <div id="historyModal" class="history-modal" style="display: none;">
+                <div class="history-modal-overlay" onclick="tracker.closeHistory()"></div>
+                <div class="history-modal-content">
+                    <div class="history-modal-header">
+                        <h2>📊 Transaction History</h2>
+                        <button class="close-btn" onclick="tracker.closeHistory()">✕</button>
+                    </div>
+                    <div class="history-search">
+                        <input type="text" id="historySearchInput" placeholder="Search transactions..." onkeyup="tracker.filterTransactionsInModal()">
+                    </div>
+                    <div id="historyTransactionsList" class="history-transactions-list">
+                        <p class="empty-state">No transactions yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Transaction Modal -->
+            <div id="editModal" class="history-modal" style="display: none;">
+                <div class="history-modal-overlay" onclick="tracker.closeEditModal()"></div>
+                <div class="history-modal-content edit-modal-content">
+                    <div class="history-modal-header">
+                        <h2>✏️ Edit Transaction</h2>
+                        <button class="close-btn" onclick="tracker.closeEditModal()">✕</button>
+                    </div>
+                    <div class="edit-form">
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" id="editDescription" placeholder="Description">
+                        </div>
+                        <div class="form-group">
+                            <label>Amount ($)</label>
+                            <input type="number" id="editAmount" placeholder="0.00" step="0.01" min="0">
+                        </div>
+                        <div class="form-group" id="editCategoryGroup">
+                            <label>Category</label>
+                            <select id="editCategory">
+                                <option value="">Select category</option>
+                            </select>
+                        </div>
+                        <div class="edit-actions">
+                            <button type="button" class="btn-save" onclick="tracker.saveEdit()">Save</button>
+                            <button type="button" class="btn-delete-edit" onclick="tracker.deleteFromEdit()">Delete</button>
+                            <button type="button" class="btn-cancel" onclick="tracker.closeEditModal()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Section -->
+            <section class="stats-section">
+                <h2>Quick Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Biggest Expense</div>
+                        <div class="stat-content" id="biggestExpense">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Transactions</div>
+                        <div class="stat-content" id="totalTransactions">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Daily Average</div>
+                        <div class="stat-content" id="dailyAverage">$0.00</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Category Breakdown Section -->
+            <section class="breakdown-section">
+                <h2>Spending by Category</h2>
+                <div id="categoryBreakdown" class="category-breakdown">
+                    <p class="empty-state">No spending yet</p>
+                </div>
+            </section>
+
+            <div class="content-wrapper">
+
+                <!-- Undo Button (Floating) -->
+                <button class="btn-undo-floating" id="undoBtn" onclick="tracker.undoLastTransaction()" title="Undo last transaction" style="display: none;">↶ Undo</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
