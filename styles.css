@@ -1097,6 +1097,16 @@ header p {
     color: var(--text);
 }
 
+#amount {
+    caret-color: transparent;
+}
+
+@supports (-webkit-touch-callout: none) {
+    #amount {
+        font-size: 16px;
+    }
+}
+
 .category-pills {
     display: flex;
     flex-wrap: wrap;
