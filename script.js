@@ -8,6 +8,7 @@ class MoneyTracker {
         this.currency = this.loadCurrency();
         this.resetConfirmPending = false;
         this.initElements();
+        this.updateAmountInputMode();
         this.setupEventListeners();
         this.initTheme();
         this.renderCategories();
@@ -561,6 +562,15 @@ class MoneyTracker {
         this.useNumberPad = this.numberPadToggle.checked;
         localStorage.setItem('moneyTrackerUseNumberPad', JSON.stringify(this.useNumberPad));
         this.numberPad.style.display = this.useNumberPad ? 'block' : 'none';
+        this.updateAmountInputMode();
+    }
+
+    updateAmountInputMode() {
+        if (this.useNumberPad) {
+            this.amountInput.inputMode = 'none';
+        } else {
+            this.amountInput.inputMode = 'decimal';
+        }
     }
 
     handleResetClick() {
