@@ -3,6 +3,7 @@ class MoneyTracker {
         this.transactions = this.loadTransactions();
         this.categories = this.loadCategories();
         this.goals = this.loadGoals();
+        this.recurring = this.loadRecurring();
         this.lastDeletedTransaction = null;
         this.language = this.loadLanguage();
         this.useNumberPad = this.loadNumberPadSetting();
@@ -10,13 +11,21 @@ class MoneyTracker {
         this.resetConfirmPending = false;
         this.currentGoalContributionId = null;
         this.currentGoalContributionAmount = '';
+        this.pendingDeleteGoalId = null;
+        this.recType = 'spend';
+        this.recFreq = 'weekly';
+        this.editingRecurringId = null;
+        this.pendingDeleteRecurringId = null;
         this.initElements();
         this.updateAmountInputMode();
         this.setupEventListeners();
         this.initTheme();
         this.renderCategories();
         this.updateLanguage();
+        this.checkRecurring();
         this.render();
+        this.renderRecurringList();
+        this.renderRecurringAnalytics();
         this.showScreen('home');
     }
 
@@ -58,6 +67,15 @@ class MoneyTracker {
 
     closeError() {
         this.errorModal.style.display = 'none';
+    }
+
+    showSuccess(message) {
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModal').style.display = 'flex';
+    }
+
+    closeSuccess() {
+        document.getElementById('successModal').style.display = 'none';
     }
 
     initElements() {
@@ -758,6 +776,12 @@ class MoneyTracker {
         this.renderCategoryBreakdown();
     }
 
+    renderCharts() {
+        this.renderBalanceChart();
+        this.renderSpendingChart();
+        this.renderRecurringAnalytics();
+    }
+
     renderBalance() {
         const balance = this.calculateBalance();
         const formattedBalance = this.formatCurrency(balance);
@@ -863,6 +887,7 @@ class MoneyTracker {
         } else if (screenName === 'analytics') {
             const el = document.getElementById('analyticsScreen');
             if (el) el.style.display = 'block';
+            setTimeout(() => this.renderCharts(), 50);
         } else if (screenName === 'goals') {
             const el = document.getElementById('goalsScreen');
             if (el) el.style.display = 'block';
@@ -923,8 +948,30 @@ class MoneyTracker {
     }
 
     deleteGoal(goalId) {
+        if (this.pendingDeleteGoalId !== goalId) {
+            this.pendingDeleteGoalId = goalId;
+            this.renderGoalsScreen();
+            return;
+        }
+        const goal = this.goals.find(g => g.id === goalId);
+        if (goal && goal.saved > 0) {
+            this.transactions.unshift({
+                id: Date.now(),
+                description: `Goal deleted: ${goal.name}`,
+                amount: goal.saved,
+                type: 'add',
+                category: null,
+                date: new Date().toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                }),
+            });
+            this.saveTransactions();
+        }
+        this.pendingDeleteGoalId = null;
         this.goals = this.goals.filter(g => g.id !== goalId);
         this.saveGoals();
+        this.render();
         this.renderGoalsScreen();
     }
 
@@ -1004,10 +1051,10 @@ class MoneyTracker {
         const goal = this.goals.find(g => g.id === this.currentGoalContributionId);
         if (!goal) return;
 
+        const wasComplete = goal.saved >= goal.target;
         goal.saved += amount;
-        if (goal.saved > goal.target) {
-            goal.saved = goal.target;
-        }
+        if (goal.saved > goal.target) goal.saved = goal.target;
+        const justCompleted = !wasComplete && goal.saved >= goal.target;
 
         this.transactions.unshift({
             id: Date.now(),
@@ -1029,6 +1076,7 @@ class MoneyTracker {
         this.closeGoalContribution();
         this.render();
         this.renderGoalsScreen();
+        if (justCompleted) this.triggerConfetti();
     }
 
     closeGoalContribution() {
@@ -1053,7 +1101,7 @@ class MoneyTracker {
                 <div class="goal-item ${isCompleted ? 'completed' : ''}">
                     <div class="goal-header">
                         <div class="goal-name">${this.escapeHtml(goal.name)}</div>
-                        <button type="button" class="btn-delete-goal" onclick="tracker.deleteGoal(${goal.id})" title="Delete goal">✕</button>
+                        <button type="button" class="btn-delete-goal ${this.pendingDeleteGoalId === goal.id ? 'confirm' : ''}" onclick="tracker.deleteGoal(${goal.id})" title="Delete goal">${this.pendingDeleteGoalId === goal.id ? 'Sure?' : '✕'}</button>
                     </div>
                     <div class="goal-progress">
                         <div class="goal-progress-bar">
@@ -1193,7 +1241,8 @@ class MoneyTracker {
                 goalAmount: 'Target Amount',
                 addGoal: 'Add Goal',
                 noGoals: 'No goals yet. Create one to get started!',
-                tips: 'Tips'
+                tips: 'Tips',
+                goalsTip: '💭 Tips: The progress bar automatically caps at 100% when you reach your target. Create multiple goals for different savings targets!'
             },
             es: {
                 addSpend: 'Agregar o Gastar Dinero',
@@ -1240,7 +1289,8 @@ class MoneyTracker {
                 goalAmount: 'Cantidad Objetivo',
                 addGoal: 'Agregar Objetivo',
                 noGoals: '¡Sin objetivos aún. Crea uno para empezar!',
-                tips: 'Consejos'
+                tips: 'Consejos',
+                goalsTip: '💭 Consejos: La barra de progreso se limita automáticamente al 100% cuando alcanzas tu objetivo. ¡Crea múltiples objetivos para diferentes metas de ahorro!'
             },
             fr: {
                 addSpend: 'Ajouter ou Dépenser de l\'Argent',
@@ -1287,7 +1337,8 @@ class MoneyTracker {
                 goalAmount: 'Montant Cible',
                 addGoal: 'Ajouter un Objectif',
                 noGoals: 'Pas d\'objectifs pour le moment. Créez-en un pour commencer!',
-                tips: 'Conseils'
+                tips: 'Conseils',
+                goalsTip: '💭 Conseils: La barre de progression se limite automatiquement à 100% lorsque vous atteignez votre objectif. Créez plusieurs objectifs pour différentes cibles d\'épargne!'
             },
             ar: {
                 addSpend: 'إضافة أو إنفاق الأموال',
@@ -1334,7 +1385,8 @@ class MoneyTracker {
                 goalAmount: 'المبلغ المستهدف',
                 addGoal: 'إضافة هدف',
                 noGoals: 'لا توجد أهداف حتى الآن. أنشئ واحدة للبدء!',
-                tips: 'نصائح'
+                tips: 'نصائح',
+                goalsTip: '💭 نصائح: يتوقف شريط التقدم تلقائياً عند 100% عند الوصول إلى هدفك. أنشئ أهدافاً متعددة لأهداف ادخار مختلفة!'
             }
         };
 
@@ -1438,6 +1490,403 @@ class MoneyTracker {
     loadCategories() {
         const saved = localStorage.getItem('moneyTrackerCategories');
         return saved ? JSON.parse(saved) : ['Food', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Other'];
+    }
+
+    // ── Recurring ──────────────────────────────────────────────
+    loadRecurring() {
+        const saved = localStorage.getItem('moneyTrackerRecurring');
+        return saved ? JSON.parse(saved) : [];
+    }
+
+    saveRecurring() {
+        localStorage.setItem('moneyTrackerRecurring', JSON.stringify(this.recurring));
+    }
+
+    checkRecurring() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        let fired = false;
+        this.recurring.forEach(rec => {
+            if (todayStr >= rec.nextDue) {
+                this.transactions.unshift({
+                    id: Date.now() + Math.random(),
+                    description: rec.description,
+                    amount: parseFloat(rec.amount),
+                    type: rec.type,
+                    category: rec.category,
+                    date: new Date().toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    }),
+                });
+                const due = new Date(rec.nextDue + 'T12:00:00');
+                if (rec.frequency === 'daily') due.setDate(due.getDate() + 1);
+                else if (rec.frequency === 'weekly') due.setDate(due.getDate() + 7);
+                else due.setMonth(due.getMonth() + 1);
+                rec.nextDue = due.toISOString().split('T')[0];
+                fired = true;
+            }
+        });
+        if (fired) { this.saveTransactions(); this.saveRecurring(); }
+    }
+
+    openRecurringModal(id) {
+        const modal = document.getElementById('recurringModal');
+        if (!modal) return;
+        this.pendingDeleteRecurringId = null;
+        this.editingRecurringId = id || null;
+        const rec = id ? this.recurring.find(r => r.id === id) : null;
+        document.getElementById('recModalTitle').textContent = rec ? '✏️ Edit Recurring' : '🔄 Recurring Transaction';
+        document.getElementById('recSaveBtn').textContent = rec ? '💾 Update Recurring' : '💾 Save Recurring';
+        document.getElementById('recName').value = rec ? rec.description : '';
+        document.getElementById('recAmount').value = rec ? rec.amount : '';
+        document.getElementById('recStartDate').value = rec ? rec.nextDue : new Date().toISOString().split('T')[0];
+        this.recType = rec ? rec.type : 'spend';
+        document.querySelectorAll('.rec-type-pill').forEach(b => b.classList.toggle('active', b.dataset.type === this.recType));
+        this.recFreq = rec ? rec.frequency : 'weekly';
+        document.querySelectorAll('.rec-freq-pills .freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === this.recFreq));
+        modal.style.display = 'flex';
+    }
+
+    closeRecurringModal() {
+        const modal = document.getElementById('recurringModal');
+        if (modal) modal.style.display = 'none';
+        this.editingRecurringId = null;
+    }
+
+    setRecType(type) {
+        this.recType = type;
+        document.querySelectorAll('.rec-type-pill').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    }
+
+    setRecFreq(freq) {
+        this.recFreq = freq;
+        document.querySelectorAll('.rec-freq-pills .freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === freq));
+    }
+
+    saveRecurringTransaction() {
+        const name = document.getElementById('recName').value.trim();
+        const amount = parseFloat(document.getElementById('recAmount').value);
+        const startDate = document.getElementById('recStartDate').value;
+        if (!name) { this.showError('Please enter a description'); return; }
+        if (!amount || amount <= 0) { this.showError('Please enter a valid amount'); return; }
+        if (!startDate) { this.showError('Please pick a start date'); return; }
+        if (this.editingRecurringId) {
+            const rec = this.recurring.find(r => r.id === this.editingRecurringId);
+            if (rec) { rec.description = name; rec.amount = amount; rec.type = this.recType; rec.frequency = this.recFreq; rec.nextDue = startDate; }
+        } else {
+            this.recurring.push({ id: Date.now(), description: name, amount, type: this.recType, category: null, frequency: this.recFreq, nextDue: startDate });
+        }
+        this.saveRecurring();
+        this.checkRecurring();
+        this.render();
+        this.renderRecurringList();
+        this.renderRecurringAnalytics();
+        this.closeRecurringModal();
+    }
+
+    deleteRecurring(id) {
+        if (this.pendingDeleteRecurringId !== id) {
+            this.pendingDeleteRecurringId = id;
+            this.renderRecurringList();
+            return;
+        }
+        this.pendingDeleteRecurringId = null;
+        this.recurring = this.recurring.filter(r => r.id !== id);
+        this.saveRecurring();
+        this.renderRecurringList();
+        this.renderRecurringAnalytics();
+    }
+
+    renderRecurringList() {
+        const container = document.getElementById('recurringList');
+        if (!container) return;
+        if (this.recurring.length === 0) {
+            container.innerHTML = '<p class="empty-state" style="padding:12px 0;font-size:0.85em;">No recurring transactions</p>';
+            return;
+        }
+        container.innerHTML = this.recurring.map(rec => {
+            const isPending = this.pendingDeleteRecurringId === rec.id;
+            const freqLabel = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[rec.frequency] || rec.frequency;
+            const typeColor = rec.type === 'add' ? '#10b981' : '#ef4444';
+            return `
+            <div class="recurring-item">
+                <div class="recurring-item-left">
+                    <span class="recurring-type-dot" style="background:${typeColor}"></span>
+                    <div class="recurring-info">
+                        <span class="recurring-desc">${this.escapeHtml(rec.description)}</span>
+                        <span class="recurring-meta">${freqLabel} · ${this.formatCurrency(rec.amount)} · next: ${rec.nextDue}</span>
+                    </div>
+                </div>
+                <div class="recurring-actions">
+                    <button type="button" class="btn-edit-recurring" onclick="tracker.openRecurringModal(${rec.id})" title="Edit">✏️</button>
+                    <button type="button" class="btn-remove-recurring ${isPending ? 'confirm' : ''}" onclick="tracker.deleteRecurring(${rec.id})">${isPending ? 'Sure?' : '✕'}</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    renderRecurringAnalytics() {
+        const container = document.getElementById('recurringAnalyticsList');
+        if (!container) return;
+        if (this.recurring.length === 0) {
+            container.innerHTML = '<p class="empty-state" style="padding:12px 0;font-size:0.85em;">No recurring transactions set up</p>';
+            return;
+        }
+        const freqLabel = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+        container.innerHTML = this.recurring.map(rec => `
+            <div class="rec-analytics-item">
+                <div class="rec-analytics-left">
+                    <span class="rec-analytics-badge ${rec.type === 'add' ? 'income' : 'expense'}">${rec.type === 'add' ? '+ Income' : '− Expense'}</span>
+                    <span class="rec-analytics-name">${this.escapeHtml(rec.description)}</span>
+                </div>
+                <div class="rec-analytics-right">
+                    <span class="rec-analytics-amount ${rec.type === 'add' ? 'income' : 'expense'}">${rec.type === 'add' ? '+' : '-'}${this.formatCurrency(rec.amount)}</span>
+                    <span class="rec-analytics-freq">${freqLabel[rec.frequency] || rec.frequency} · next ${rec.nextDue}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ── Export CSV ─────────────────────────────────────────────
+    exportToCSV() {
+        const headers = ['Date', 'Description', 'Type', 'Amount', 'Category'];
+        const rows = this.transactions.map(t => [
+            `"${t.date}"`,
+            `"${(t.description || '').replace(/"/g, '""')}"`,
+            t.type,
+            t.amount.toFixed(2),
+            `"${(t.category || '').replace(/"/g, '""')}"`
+        ]);
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // ── Import CSV ─────────────────────────────────────────────
+    importFromCSV(input) {
+        const file = input.files[0];
+        if (!file) return;
+        input.value = '';
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length < 2) { this.showError('CSV has no data rows.'); return; }
+
+                // Parse header to find column indices (case-insensitive)
+                const parseRow = (line) => {
+                    const cols = [];
+                    let cur = '', inQuote = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const ch = line[i];
+                        if (ch === '"') {
+                            if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
+                            else { inQuote = !inQuote; }
+                        } else if (ch === ',' && !inQuote) {
+                            cols.push(cur.trim()); cur = '';
+                        } else { cur += ch; }
+                    }
+                    cols.push(cur.trim());
+                    return cols;
+                };
+
+                const headers = parseRow(lines[0]).map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
+                const idx = (name) => headers.indexOf(name);
+                const iDate = idx('date'), iDesc = idx('description'), iType = idx('type'),
+                      iAmt  = idx('amount'), iCat = idx('category');
+
+                if (iAmt === -1 || iType === -1) {
+                    this.showError('CSV must have "Type" and "Amount" columns.'); return;
+                }
+
+                let imported = 0, skipped = 0;
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = parseRow(lines[i]);
+                    const type = (cols[iType] || '').toLowerCase();
+                    if (type !== 'add' && type !== 'spend') { skipped++; continue; }
+                    const amount = parseFloat(cols[iAmt]);
+                    if (!amount || amount <= 0) { skipped++; continue; }
+
+                    this.transactions.push({
+                        id: Date.now() + Math.random() + i,
+                        description: iDesc >= 0 ? (cols[iDesc] || 'Imported') : 'Imported',
+                        amount,
+                        type,
+                        category: iCat >= 0 ? (cols[iCat] || null) : null,
+                        date: iDate >= 0 && cols[iDate]
+                            ? cols[iDate]
+                            : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    });
+                    imported++;
+                }
+
+                if (imported === 0) { this.showError('No valid rows found in CSV.'); return; }
+                this.saveTransactions();
+                this.render();
+                this.showSuccess(`Imported ${imported} transaction${imported !== 1 ? 's' : ''}${skipped ? ` (${skipped} skipped)` : ''}!`);
+            } catch (err) {
+                this.showError('Failed to parse CSV. Make sure it\'s a valid file.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // ── Confetti ───────────────────────────────────────────────
+    triggerConfetti() {
+        const colors = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#ffffff'];
+        for (let i = 0; i < 80; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            const size = Math.random() * 10 + 6;
+            piece.style.cssText = `
+                left:${Math.random() * 100}vw;
+                width:${size}px;
+                height:${Math.random() > 0.5 ? size : size * 0.4}px;
+                background:${colors[Math.floor(Math.random() * colors.length)]};
+                animation-duration:${Math.random() * 2 + 2}s;
+                animation-delay:${Math.random() * 0.8}s;
+                border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
+            `;
+            document.body.appendChild(piece);
+            piece.addEventListener('animationend', () => piece.remove());
+        }
+    }
+
+    // ── Charts ─────────────────────────────────────────────────
+    renderSpendingChart() {
+        const canvas = document.getElementById('spendingChart');
+        const emptyEl = document.getElementById('spendingChartEmpty');
+        if (!canvas) return;
+
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            days.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), dateStr: d.toDateString(), amount: 0 });
+        }
+        this.transactions.filter(t => t.type === 'spend').forEach(t => {
+            const tDate = new Date(t.date);
+            if (isNaN(tDate)) return;
+            const day = days.find(d => d.dateStr === tDate.toDateString());
+            if (day) day.amount += t.amount;
+        });
+
+        const maxAmount = Math.max(...days.map(d => d.amount), 1);
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width) return;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const W = rect.width, H = rect.height;
+        const pad = { top: 16, right: 10, bottom: 36, left: 48 };
+        const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+        const barW = (cW / 7) * 0.55, barGap = cW / 7;
+        const textColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)';
+        const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)';
+        ctx.clearRect(0, 0, W, H);
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + (cH / 4) * i;
+            ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+            ctx.fillStyle = textColor; ctx.font = `10px -apple-system,sans-serif`; ctx.textAlign = 'right';
+            ctx.fillText(this.formatCurrency(maxAmount * (1 - i / 4)).replace(/\.00$/, ''), pad.left - 4, y + 4);
+        }
+        days.forEach((day, i) => {
+            const x = pad.left + barGap * i + (barGap - barW) / 2;
+            const bH = (day.amount / maxAmount) * cH;
+            const y = pad.top + cH - bH;
+            if (day.amount > 0) {
+                const g = ctx.createLinearGradient(0, y, 0, y + bH);
+                g.addColorStop(0, '#f87171'); g.addColorStop(1, '#dc2626');
+                ctx.fillStyle = g;
+            } else {
+                ctx.fillStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+            }
+            const r = Math.min(6, bH);
+            ctx.beginPath();
+            ctx.moveTo(x + r, y); ctx.lineTo(x + barW - r, y);
+            ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+            ctx.lineTo(x + barW, y + bH); ctx.lineTo(x, y + bH); ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = textColor; ctx.font = `10px -apple-system,sans-serif`; ctx.textAlign = 'center';
+            ctx.fillText(day.label, x + barW / 2, H - pad.bottom + 16);
+        });
+        if (emptyEl) emptyEl.style.display = 'none';
+    }
+
+    renderBalanceChart() {
+        const canvas = document.getElementById('balanceChart');
+        const emptyEl = document.getElementById('balanceChartEmpty');
+        if (!canvas) return;
+        if (this.transactions.length === 0) {
+            canvas.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = 'flex';
+            return;
+        }
+        canvas.style.display = 'block';
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        const sorted = [...this.transactions].reverse();
+        const points = [];
+        let bal = 0;
+        sorted.forEach(t => {
+            bal += t.type === 'add' ? t.amount : -t.amount;
+            points.push(bal);
+        });
+
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width) return;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const W = rect.width, H = rect.height;
+        const pad = { top: 16, right: 10, bottom: 20, left: 52 };
+        const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+        const minV = Math.min(...points, 0), maxV = Math.max(...points, 0);
+        const range = maxV - minV || 1;
+        const textColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)';
+        const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)';
+        ctx.clearRect(0, 0, W, H);
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + (cH / 4) * i;
+            ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+            ctx.fillStyle = textColor; ctx.font = `10px -apple-system,sans-serif`; ctx.textAlign = 'right';
+            ctx.fillText(this.formatCurrency(maxV - (range / 4) * i).replace(/\.00$/, ''), pad.left - 4, y + 4);
+        }
+        const toX = i => pad.left + (points.length < 2 ? cW / 2 : (i / (points.length - 1)) * cW);
+        const toY = v => pad.top + cH - ((v - minV) / range) * cH;
+        const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+        grad.addColorStop(0, 'rgba(99,102,241,0.35)'); grad.addColorStop(1, 'rgba(99,102,241,0.02)');
+        ctx.beginPath();
+        ctx.moveTo(toX(0), toY(points[0]));
+        points.forEach((v, i) => { if (i > 0) ctx.lineTo(toX(i), toY(v)); });
+        ctx.lineTo(toX(points.length - 1), pad.top + cH);
+        ctx.lineTo(toX(0), pad.top + cH);
+        ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(toX(0), toY(points[0]));
+        points.forEach((v, i) => { if (i > 0) ctx.lineTo(toX(i), toY(v)); });
+        ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+        [0, points.length - 1].forEach(i => {
+            ctx.beginPath(); ctx.arc(toX(i), toY(points[i]), 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#6366f1'; ctx.fill();
+            ctx.strokeStyle = isDark ? '#1a1a2e' : '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+        });
     }
 }
 
