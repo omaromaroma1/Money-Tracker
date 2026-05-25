@@ -490,7 +490,7 @@ class MoneyTracker {
         transaction.amount = newAmount;
         if (transaction.type === 'spend') {
             transaction.category = this.editCategory.value;
-            transaction.description = this.editCategory.value;
+            transaction.description = this.editDescription.value || this.editCategory.value;
         } else {
             transaction.description = this.editDescription.value || 'Added Money';
         }
