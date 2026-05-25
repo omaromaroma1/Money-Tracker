@@ -2231,16 +2231,16 @@ header p {
 
 .action-bar {
     flex: 1;
-    padding: 30px 18px;
+    padding: 44px 18px;
     border: none;
-    border-radius: 20px;
+    border-radius: 24px;
     font-size: 1em;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     box-shadow: var(--shadow-lg);
     color: white;
     font-weight: 700;
@@ -2272,12 +2272,12 @@ header p {
 }
 
 .action-icon {
-    font-size: 2.4em;
+    font-size: 3em;
     display: block;
 }
 
 .action-text {
-    font-size: 1.1em;
+    font-size: 1.25em;
     font-weight: 700;
     letter-spacing: -0.3px;
 }
@@ -2477,7 +2477,7 @@ header p {
     }
 
     .action-bar {
-        padding: 24px 20px;
+        padding: 34px 24px;
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
@@ -2485,7 +2485,7 @@ header p {
     }
 
     .action-icon {
-        font-size: 1.8em;
+        font-size: 2.2em;
     }
 
     .action-text {
