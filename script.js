@@ -64,9 +64,9 @@ class MoneyTracker {
         this.form = document.getElementById('transactionForm');
         this.amountInput = document.getElementById('amount');
         this.numberPad = document.getElementById('numberPad');
-        this.categorySelect = document.getElementById('category');
-        this.categoryGroup = document.getElementById('categoryGroup');
-        this.categoryPills = document.getElementById('categoryPills');
+        this.categorySelect = document.getElementById('categorySpend') || document.getElementById('category');
+        this.categoryGroup = document.getElementById('categoryGroupSpend') || document.getElementById('categoryGroup');
+        this.categoryPills = document.getElementById('categoryPillsSpend') || document.getElementById('categoryPills');
         this.totalBalance = document.getElementById('totalBalance');
         this.newCategoryInput = document.getElementById('newCategoryInput');
         this.categoriesList = document.getElementById('categoriesList');
@@ -86,31 +86,41 @@ class MoneyTracker {
     }
 
     setupEventListeners() {
-        this.form.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-            }
-        });
-        this.newCategoryInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.addCategory();
-            }
-        });
-        this.amountInput.addEventListener('focus', () => {
-            if (this.useNumberPad) {
-                this.numberPad.style.display = 'block';
-            }
-        });
+        if (this.form) {
+            this.form.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+        if (this.newCategoryInput) {
+            this.newCategoryInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addCategory();
+                }
+            });
+        }
+        if (this.amountInput) {
+            this.amountInput.addEventListener('focus', () => {
+                if (this.useNumberPad && this.numberPad) {
+                    this.numberPad.style.display = 'block';
+                }
+            });
+        }
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.form-group') && !e.target.closest('.number-pad')) {
-                this.numberPad.style.display = 'none';
+                if (this.numberPad) this.numberPad.style.display = 'none';
+                const numberPadAdd = document.getElementById('numberPad');
+                const numberPadSpend = document.getElementById('numberPadSpend');
+                if (numberPadAdd) numberPadAdd.style.display = 'none';
+                if (numberPadSpend) numberPadSpend.style.display = 'none';
             }
         });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                if (this.categoriesManagerPanel.style.display !== 'none') {
+                if (this.categoriesManagerPanel && this.categoriesManagerPanel.style.display !== 'none') {
                     this.toggleCategoriesManager();
                 }
             }
@@ -147,6 +157,28 @@ class MoneyTracker {
             editCloseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.closeEditModal();
+            });
+        }
+
+        // Add Money Modal event listeners
+        const amountInput = document.getElementById('amount');
+        const numberPadAdd = document.getElementById('numberPad');
+        if (amountInput && numberPadAdd) {
+            amountInput.addEventListener('focus', () => {
+                if (this.useNumberPad) {
+                    numberPadAdd.style.display = 'block';
+                }
+            });
+        }
+
+        // Spend Money Modal event listeners
+        const amountSpendInput = document.getElementById('amountSpend');
+        const numberPadSpend = document.getElementById('numberPadSpend');
+        if (amountSpendInput && numberPadSpend) {
+            amountSpendInput.addEventListener('focus', () => {
+                if (this.useNumberPad) {
+                    numberPadSpend.style.display = 'block';
+                }
             });
         }
 
@@ -211,53 +243,92 @@ class MoneyTracker {
     }
 
     addToAmount(value) {
-        if (value === '.' && this.amountInput.value.includes('.')) {
+        const addMoneyModal = document.getElementById('addMoneyModal');
+        const spendMoneyModal = document.getElementById('spendMoneyModal');
+        let amountInput;
+
+        if (addMoneyModal && addMoneyModal.style.display === 'flex') {
+            amountInput = document.getElementById('amount');
+        } else if (spendMoneyModal && spendMoneyModal.style.display === 'flex') {
+            amountInput = document.getElementById('amountSpend');
+        }
+
+        if (!amountInput) return;
+
+        if (value === '.' && amountInput.value.includes('.')) {
             return;
         }
-        this.amountInput.value += value;
+        amountInput.value += value;
     }
 
     deleteFromAmount() {
-        this.amountInput.value = this.amountInput.value.slice(0, -1);
+        const addMoneyModal = document.getElementById('addMoneyModal');
+        const spendMoneyModal = document.getElementById('spendMoneyModal');
+        let amountInput;
+
+        if (addMoneyModal && addMoneyModal.style.display === 'flex') {
+            amountInput = document.getElementById('amount');
+        } else if (spendMoneyModal && spendMoneyModal.style.display === 'flex') {
+            amountInput = document.getElementById('amountSpend');
+        }
+
+        if (!amountInput) return;
+        amountInput.value = amountInput.value.slice(0, -1);
     }
 
     clearAmount() {
-        this.amountInput.value = '';
+        const addMoneyModal = document.getElementById('addMoneyModal');
+        const spendMoneyModal = document.getElementById('spendMoneyModal');
+        let amountInput;
+
+        if (addMoneyModal && addMoneyModal.style.display === 'flex') {
+            amountInput = document.getElementById('amount');
+        } else if (spendMoneyModal && spendMoneyModal.style.display === 'flex') {
+            amountInput = document.getElementById('amountSpend');
+        }
+
+        if (!amountInput) return;
+        amountInput.value = '';
     }
 
     submitForm(type) {
-        if (type === 'spend' && this.categoryGroup.style.display === 'none') {
-            this.categoryGroup.style.display = 'block';
-            return;
+        let amountInput, descriptionInput, categorySelect, numberPad;
+
+        if (type === 'add') {
+            amountInput = document.getElementById('amount');
+            descriptionInput = document.getElementById('description');
+            numberPad = document.getElementById('numberPad');
+        } else if (type === 'spend') {
+            amountInput = document.getElementById('amountSpend');
+            descriptionInput = document.getElementById('descriptionSpend');
+            categorySelect = document.getElementById('categorySpend');
+            numberPad = document.getElementById('numberPadSpend');
         }
 
-        if (type === 'add' && this.categoryGroup.style.display !== 'none') {
-            this.categoryGroup.style.display = 'none';
-            return;
-        }
-
-        if (!this.amountInput.value || isNaN(parseFloat(this.amountInput.value))) {
+        if (!amountInput || !amountInput.value || isNaN(parseFloat(amountInput.value))) {
             this.showError('Please enter a valid amount');
             return;
         }
 
-        const amount = parseFloat(this.amountInput.value);
+        const amount = parseFloat(amountInput.value);
         if (amount <= 0) {
             this.showError('Amount must be greater than 0');
             return;
         }
 
-        if (type === 'spend' && !this.categorySelect.value) {
+        if (type === 'spend' && (!categorySelect || !categorySelect.value)) {
             this.showError('Please select a category');
             return;
         }
 
+        const description = descriptionInput ? descriptionInput.value.trim() : '';
+
         const transaction = {
             id: Date.now(),
-            description: type === 'spend' ? this.categorySelect.value : 'Added Money',
+            description: type === 'spend' ? (description || categorySelect.value) : (description || 'Added Money'),
             amount: amount,
             type: type,
-            category: type === 'spend' ? this.categorySelect.value : null,
+            category: type === 'spend' ? categorySelect.value : null,
             date: new Date().toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -269,12 +340,20 @@ class MoneyTracker {
 
         this.transactions.unshift(transaction);
         this.saveTransactions();
-        this.form.reset();
-        this.categoryGroup.style.display = 'none';
-        this.numberPad.style.display = 'none';
+
+        amountInput.value = '';
+        if (descriptionInput) descriptionInput.value = '';
+        if (numberPad) numberPad.style.display = 'none';
         document.querySelectorAll('.category-pill').forEach(pill => {
             pill.classList.remove('active');
         });
+
+        if (type === 'add') {
+            this.closeAddMoneyModal();
+        } else {
+            this.closeSpendMoneyModal();
+        }
+
         this.render();
     }
 
@@ -331,6 +410,51 @@ class MoneyTracker {
     closeEditModal() {
         this.editModal.style.display = 'none';
         this.editingTransactionId = null;
+    }
+
+    openAddMoneyModal() {
+        const addMoneyModal = document.getElementById('addMoneyModal');
+        if (addMoneyModal) {
+            addMoneyModal.style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('amount').focus();
+            }, 100);
+            document.getElementById('amount').value = '';
+            document.getElementById('description').value = '';
+        }
+    }
+
+    closeAddMoneyModal() {
+        const addMoneyModal = document.getElementById('addMoneyModal');
+        if (addMoneyModal) {
+            addMoneyModal.style.display = 'none';
+            document.getElementById('amount').value = '';
+            document.getElementById('description').value = '';
+            this.numberPad.style.display = 'none';
+        }
+    }
+
+    openSpendMoneyModal() {
+        const spendMoneyModal = document.getElementById('spendMoneyModal');
+        if (spendMoneyModal) {
+            spendMoneyModal.style.display = 'flex';
+            this.updateCategoryPillsSpend();
+            setTimeout(() => {
+                document.getElementById('amountSpend').focus();
+            }, 100);
+            document.getElementById('amountSpend').value = '';
+            document.getElementById('descriptionSpend').value = '';
+        }
+    }
+
+    closeSpendMoneyModal() {
+        const spendMoneyModal = document.getElementById('spendMoneyModal');
+        if (spendMoneyModal) {
+            spendMoneyModal.style.display = 'none';
+            document.getElementById('amountSpend').value = '';
+            document.getElementById('descriptionSpend').value = '';
+            document.getElementById('numberPadSpend').style.display = 'none';
+        }
     }
 
     saveEdit() {
@@ -451,12 +575,25 @@ class MoneyTracker {
             this.categorySelect.appendChild(option);
         });
 
-        this.categoriesList.innerHTML = this.categories.map(cat => `
-            <div class="category-item">
-                <span>${this.escapeHtml(cat)}</span>
-                <button type="button" class="btn-remove-category" onclick="tracker.removeCategory('${this.escapeHtml(cat)}')">✕</button>
-            </div>
-        `).join('');
+        const categorySelectSpend = document.getElementById('categorySpend');
+        if (categorySelectSpend) {
+            categorySelectSpend.innerHTML = '<option value="">Select category</option>';
+            this.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categorySelectSpend.appendChild(option);
+            });
+        }
+
+        if (this.categoriesList) {
+            this.categoriesList.innerHTML = this.categories.map(cat => `
+                <div class="category-item">
+                    <span>${this.escapeHtml(cat)}</span>
+                    <button type="button" class="btn-remove-category" onclick="tracker.removeCategory('${this.escapeHtml(cat)}')">✕</button>
+                </div>
+            `).join('');
+        }
 
         this.renderCategoryPills();
     }
@@ -475,6 +612,31 @@ class MoneyTracker {
             pill.classList.remove('active');
         });
         event.target.classList.add('active');
+    }
+
+    updateCategoryPillsSpend() {
+        const categoryPillsSpend = document.getElementById('categoryPillsSpend');
+        if (!categoryPillsSpend) return;
+
+        categoryPillsSpend.innerHTML = this.categories.map(cat => `
+            <button type="button" class="category-pill" onclick="tracker.selectCategorySpend('${this.escapeHtml(cat)}')">
+                ${this.escapeHtml(cat)}
+            </button>
+        `).join('');
+    }
+
+    selectCategorySpend(cat) {
+        const categorySelectSpend = document.getElementById('categorySpend');
+        if (categorySelectSpend) {
+            categorySelectSpend.value = cat;
+        }
+        const categoryPillsSpend = document.getElementById('categoryPillsSpend');
+        if (categoryPillsSpend) {
+            categoryPillsSpend.querySelectorAll('.category-pill').forEach(pill => {
+                pill.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
     }
 
     calculateBalance() {
@@ -568,9 +730,25 @@ class MoneyTracker {
         const balance = this.calculateBalance();
         const formattedBalance = this.formatCurrency(balance);
         this.totalBalance.textContent = formattedBalance;
+
         const balanceMinimal = document.getElementById('balanceMinimal');
         if (balanceMinimal) {
             balanceMinimal.textContent = formattedBalance;
+            const balanceDisplay = document.querySelector('.balance-display-minimal');
+            if (balance < 0) {
+                balanceDisplay.classList.add('negative');
+            } else {
+                balanceDisplay.classList.remove('negative');
+            }
+        }
+
+        const summaryCardBalance = document.querySelector('.summary-card.balance');
+        if (summaryCardBalance) {
+            if (balance < 0) {
+                summaryCardBalance.classList.add('negative');
+            } else {
+                summaryCardBalance.classList.remove('negative');
+            }
         }
     }
 
@@ -635,23 +813,36 @@ class MoneyTracker {
     }
 
     showScreen(screenName) {
-        document.getElementById('quickAddScreen').style.display = 'none';
-        document.getElementById('analyticsScreen').style.display = 'none';
-        document.getElementById('goalsScreen').style.display = 'none';
-        document.getElementById('settingsScreen').style.display = 'none';
+        const screens = ['quickAddScreen', 'analyticsScreen', 'goalsScreen', 'settingsScreen'];
+        screens.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = 'none';
+                el.scrollTop = 0;
+            }
+        });
+
+        const header = document.querySelector('header');
+        if (header) header.style.display = screenName === 'home' ? 'flex' : 'none';
 
         if (screenName === 'home') {
-            document.getElementById('quickAddScreen').style.display = 'block';
+            const el = document.getElementById('quickAddScreen');
+            if (el) el.style.display = 'block';
         } else if (screenName === 'analytics') {
-            document.getElementById('analyticsScreen').style.display = 'block';
+            const el = document.getElementById('analyticsScreen');
+            if (el) el.style.display = 'block';
         } else if (screenName === 'goals') {
-            document.getElementById('goalsScreen').style.display = 'block';
+            const el = document.getElementById('goalsScreen');
+            if (el) el.style.display = 'block';
             this.renderGoalsScreen();
         } else if (screenName === 'settings') {
-            document.getElementById('settingsScreen').style.display = 'block';
-            this.numberPadToggle.checked = this.useNumberPad;
-            this.updateLanguageButtons();
-            this.updateCurrencyButtons();
+            const el = document.getElementById('settingsScreen');
+            if (el) {
+                el.style.display = 'block';
+                this.numberPadToggle.checked = this.useNumberPad;
+                this.updateLanguageButtons();
+                this.updateCurrencyButtons();
+            }
         }
 
         this.updateMenuBar(screenName);
@@ -900,8 +1091,11 @@ class MoneyTracker {
             }, 3000);
         } else {
             this.resetConfirmPending = false;
+            const savedCurrency = this.currency;
             this.transactions = [];
             this.saveTransactions();
+            this.currency = savedCurrency;
+            localStorage.setItem('moneyTrackerCurrency', savedCurrency);
             this.showScreen('home');
             this.render();
             btn.classList.remove('confirm-click');
@@ -925,6 +1119,8 @@ class MoneyTracker {
             en: {
                 addSpend: 'Add or Spend Money',
                 amount: 'Amount ($)',
+                whatDidYouBuy: 'What did you buy? (optional)',
+                descriptionPlaceholder: 'e.g., Groceries, Gas, Movie tickets...',
                 chooseCategory: 'Choose Category',
                 addMoney: '+ Add Money',
                 spendMoney: '- Spend Money',
@@ -970,6 +1166,8 @@ class MoneyTracker {
             es: {
                 addSpend: 'Agregar o Gastar Dinero',
                 amount: 'Cantidad ($)',
+                whatDidYouBuy: '¿Qué compraste? (opcional)',
+                descriptionPlaceholder: 'p. ej., Groceries, Gasolina, Entradas de cine...',
                 chooseCategory: 'Seleccionar Categoría',
                 addMoney: '+ Agregar Dinero',
                 spendMoney: '- Gastar Dinero',
@@ -1015,6 +1213,8 @@ class MoneyTracker {
             fr: {
                 addSpend: 'Ajouter ou Dépenser de l\'Argent',
                 amount: 'Montant ($)',
+                whatDidYouBuy: 'Qu\'avez-vous acheté? (optionnel)',
+                descriptionPlaceholder: 'ex., Épicerie, Essence, Billets de cinéma...',
                 chooseCategory: 'Choisir une Catégorie',
                 addMoney: '+ Ajouter de l\'Argent',
                 spendMoney: '- Dépenser de l\'Argent',
@@ -1060,6 +1260,8 @@ class MoneyTracker {
             ar: {
                 addSpend: 'إضافة أو إنفاق الأموال',
                 amount: 'المبلغ ($)',
+                whatDidYouBuy: 'ماذا اشتريت؟ (اختياري)',
+                descriptionPlaceholder: 'مثال: البقالة، الوقود، تذاكر السينما...',
                 chooseCategory: 'اختر الفئة',
                 addMoney: '+ إضافة أموال',
                 spendMoney: '- إنفاق الأموال',
