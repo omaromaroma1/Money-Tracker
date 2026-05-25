@@ -2,11 +2,14 @@ class MoneyTracker {
     constructor() {
         this.transactions = this.loadTransactions();
         this.categories = this.loadCategories();
+        this.goals = this.loadGoals();
         this.lastDeletedTransaction = null;
         this.language = this.loadLanguage();
         this.useNumberPad = this.loadNumberPadSetting();
         this.currency = this.loadCurrency();
         this.resetConfirmPending = false;
+        this.currentGoalContributionId = null;
+        this.currentGoalContributionAmount = '';
         this.initElements();
         this.updateAmountInputMode();
         this.setupEventListeners();
@@ -14,6 +17,7 @@ class MoneyTracker {
         this.renderCategories();
         this.updateLanguage();
         this.render();
+        this.showScreen('home');
     }
 
     initTheme() {
@@ -47,6 +51,15 @@ class MoneyTracker {
         }
     }
 
+    showError(message) {
+        this.errorMessage.textContent = message;
+        this.errorModal.style.display = 'flex';
+    }
+
+    closeError() {
+        this.errorModal.style.display = 'none';
+    }
+
     initElements() {
         this.form = document.getElementById('transactionForm');
         this.amountInput = document.getElementById('amount');
@@ -67,8 +80,9 @@ class MoneyTracker {
         this.editAmount = document.getElementById('editAmount');
         this.editCategory = document.getElementById('editCategory');
         this.editingTransactionId = null;
-        this.settingsModal = document.getElementById('settingsModal');
         this.numberPadToggle = document.getElementById('numberPadToggle');
+        this.errorModal = document.getElementById('errorModal');
+        this.errorMessage = document.getElementById('errorMessage');
     }
 
     setupEventListeners() {
@@ -109,14 +123,90 @@ class MoneyTracker {
                 }
             });
 
-            // Add close button handler
-            const closeBtn = this.categoriesManagerPanel.querySelector('.close-btn');
+            const closeBtn = this.categoriesManagerPanel.querySelector('.categories-panel-header .close-btn');
             if (closeBtn) {
                 closeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     this.toggleCategoriesManager();
                 });
             }
+        }
+
+        // Add close button listeners for modals
+        const historyCloseBtn = document.querySelector('#historyModal .close-btn');
+        if (historyCloseBtn) {
+            historyCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeHistory();
+            });
+        }
+
+        const editCloseBtn = document.querySelector('#editModal .close-btn');
+        if (editCloseBtn) {
+            editCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeEditModal();
+            });
+        }
+
+        const goalContributionInput = document.getElementById('goalContributionInput');
+        if (goalContributionInput) {
+            goalContributionInput.addEventListener('input', () => {
+                this.updateGoalContributionDisplay();
+            });
+        }
+
+        const goalCloseBtn = document.querySelector('#goalContributionModal .close-btn');
+        if (goalCloseBtn) {
+            goalCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeGoalContribution();
+            });
+        }
+
+        const errorCloseBtn = document.querySelector('.error-close-btn');
+        if (errorCloseBtn) {
+            errorCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeError();
+            });
+        }
+
+        const historyOverlay = document.querySelector('#historyModal .history-modal-overlay');
+        if (historyOverlay) {
+            historyOverlay.addEventListener('click', (e) => {
+                if (e.target === historyOverlay) {
+                    this.closeHistory();
+                }
+            });
+        }
+
+        const editOverlay = document.querySelector('#editModal .history-modal-overlay');
+        if (editOverlay) {
+            editOverlay.addEventListener('click', (e) => {
+                if (e.target === editOverlay) {
+                    this.closeEditModal();
+                }
+            });
+        }
+
+        const goalModal = document.getElementById('goalContributionModal');
+        if (goalModal) {
+            goalModal.addEventListener('click', (e) => {
+                if (e.target === goalModal) {
+                    this.closeGoalContribution();
+                }
+            });
+        }
+
+        const errorModal = document.getElementById('errorModal');
+        if (errorModal) {
+            errorModal.addEventListener('click', (e) => {
+                if (e.target === errorModal) {
+                    this.closeError();
+                }
+            });
         }
     }
 
@@ -147,18 +237,18 @@ class MoneyTracker {
         }
 
         if (!this.amountInput.value || isNaN(parseFloat(this.amountInput.value))) {
-            alert('Please enter a valid amount');
+            this.showError('Please enter a valid amount');
             return;
         }
 
         const amount = parseFloat(this.amountInput.value);
         if (amount <= 0) {
-            alert('Amount must be greater than 0');
+            this.showError('Amount must be greater than 0');
             return;
         }
 
         if (type === 'spend' && !this.categorySelect.value) {
-            alert('Please select a category');
+            this.showError('Please select a category');
             return;
         }
 
@@ -208,7 +298,7 @@ class MoneyTracker {
     }
 
     openHistory() {
-        this.historyModal.style.display = 'block';
+        this.historyModal.style.display = 'flex';
         this.filterTransactionsInModal();
     }
 
@@ -235,7 +325,7 @@ class MoneyTracker {
             this.editCategory.appendChild(option);
         });
 
-        this.editModal.style.display = 'block';
+        this.editModal.style.display = 'flex';
     }
 
     closeEditModal() {
@@ -251,12 +341,12 @@ class MoneyTracker {
 
         const newAmount = parseFloat(this.editAmount.value);
         if (!newAmount || newAmount <= 0) {
-            alert('Please enter a valid amount');
+            this.showError('Please enter a valid amount');
             return;
         }
 
         if (transaction.type === 'spend' && !this.editCategory.value) {
-            alert('Please select a category');
+            this.showError('Please select a category');
             return;
         }
 
@@ -324,18 +414,18 @@ class MoneyTracker {
 
     toggleCategoriesManager() {
         const isHidden = this.categoriesManagerPanel.style.display === 'none';
-        this.categoriesManagerPanel.style.display = isHidden ? 'block' : 'none';
+        this.categoriesManagerPanel.style.display = isHidden ? 'flex' : 'none';
     }
 
     addCategory() {
         const categoryName = this.newCategoryInput.value.trim();
         if (!categoryName) {
-            alert('Please enter a category name');
+            this.showError('Please enter a category name');
             return;
         }
 
         if (this.categories.includes(categoryName)) {
-            alert('This category already exists');
+            this.showError('This category already exists');
             return;
         }
 
@@ -476,7 +566,12 @@ class MoneyTracker {
 
     renderBalance() {
         const balance = this.calculateBalance();
-        this.totalBalance.textContent = this.formatCurrency(balance);
+        const formattedBalance = this.formatCurrency(balance);
+        this.totalBalance.textContent = formattedBalance;
+        const balanceMinimal = document.getElementById('balanceMinimal');
+        if (balanceMinimal) {
+            balanceMinimal.textContent = formattedBalance;
+        }
     }
 
     renderMonthlyStats() {
@@ -528,15 +623,233 @@ class MoneyTracker {
         return div.innerHTML;
     }
 
-    openSettings() {
-        this.settingsModal.style.display = 'block';
-        this.numberPadToggle.checked = this.useNumberPad;
-        this.updateLanguageButtons();
-        this.updateCurrencyButtons();
+
+    goToAnalytics() {
+        document.getElementById('quickAddScreen').style.display = 'none';
+        document.getElementById('analyticsScreen').style.display = 'block';
     }
 
-    closeSettings() {
-        this.settingsModal.style.display = 'none';
+    goToQuickAdd() {
+        document.getElementById('analyticsScreen').style.display = 'none';
+        document.getElementById('quickAddScreen').style.display = 'block';
+    }
+
+    showScreen(screenName) {
+        document.getElementById('quickAddScreen').style.display = 'none';
+        document.getElementById('analyticsScreen').style.display = 'none';
+        document.getElementById('goalsScreen').style.display = 'none';
+        document.getElementById('settingsScreen').style.display = 'none';
+
+        if (screenName === 'home') {
+            document.getElementById('quickAddScreen').style.display = 'block';
+        } else if (screenName === 'analytics') {
+            document.getElementById('analyticsScreen').style.display = 'block';
+        } else if (screenName === 'goals') {
+            document.getElementById('goalsScreen').style.display = 'block';
+            this.renderGoalsScreen();
+        } else if (screenName === 'settings') {
+            document.getElementById('settingsScreen').style.display = 'block';
+            this.numberPadToggle.checked = this.useNumberPad;
+            this.updateLanguageButtons();
+            this.updateCurrencyButtons();
+        }
+
+        this.updateMenuBar(screenName);
+    }
+
+    updateMenuBar(screenName) {
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        const screens = { home: 0, goals: 1, analytics: 2, settings: 3 };
+        const index = screens[screenName];
+        if (index !== undefined) {
+            document.querySelectorAll('.menu-item')[index].classList.add('active');
+        }
+    }
+
+    addGoal() {
+        const goalNameInput = document.getElementById('goalName');
+        const goalAmountInput = document.getElementById('goalAmount');
+        const goalName = goalNameInput.value.trim();
+        const goalAmount = parseFloat(goalAmountInput.value);
+
+        if (!goalName) {
+            this.showError('Please enter a goal name');
+            return;
+        }
+        if (isNaN(goalAmount) || goalAmount <= 0) {
+            this.showError('Please enter a valid goal amount');
+            return;
+        }
+
+        const goal = {
+            id: Date.now(),
+            name: goalName,
+            target: goalAmount,
+            saved: 0,
+            createdDate: new Date().toISOString()
+        };
+
+        this.goals.push(goal);
+        this.saveGoals();
+        goalNameInput.value = '';
+        goalAmountInput.value = '';
+        this.renderGoalsScreen();
+    }
+
+    deleteGoal(goalId) {
+        this.goals = this.goals.filter(g => g.id !== goalId);
+        this.saveGoals();
+        this.renderGoalsScreen();
+    }
+
+    addMoneyToGoal(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return;
+
+        this.currentGoalContributionId = goalId;
+        this.currentGoalContributionAmount = '';
+        document.getElementById('goalContributionName').textContent = goal.name;
+
+        const goalNumberPad = document.getElementById('goalNumberPad');
+        const goalInput = document.getElementById('goalContributionInput');
+
+        if (this.useNumberPad) {
+            goalNumberPad.style.display = 'grid';
+            goalInput.style.display = 'none';
+        } else {
+            goalNumberPad.style.display = 'none';
+            goalInput.style.display = 'block';
+            goalInput.value = '';
+            goalInput.focus();
+        }
+
+        document.getElementById('goalContributionModal').style.display = 'flex';
+        this.updateGoalContributionDisplay();
+    }
+
+    addToGoalAmount(value) {
+        if (value === '.' && this.currentGoalContributionAmount.includes('.')) {
+            return;
+        }
+        this.currentGoalContributionAmount += value;
+        this.updateGoalContributionDisplay();
+    }
+
+    deleteFromGoalAmount() {
+        this.currentGoalContributionAmount = this.currentGoalContributionAmount.slice(0, -1);
+        this.updateGoalContributionDisplay();
+    }
+
+    clearGoalAmount() {
+        this.currentGoalContributionAmount = '';
+        this.updateGoalContributionDisplay();
+    }
+
+    updateGoalContributionDisplay() {
+        const goalInput = document.getElementById('goalContributionInput');
+
+        if (!this.useNumberPad && goalInput.style.display !== 'none') {
+            this.currentGoalContributionAmount = goalInput.value;
+        }
+
+        const amount = this.currentGoalContributionAmount || '0';
+        const formattedAmount = this.formatCurrency(parseFloat(amount) || 0);
+        document.getElementById('contributionAmount').textContent = formattedAmount;
+    }
+
+    confirmGoalContribution() {
+        if (!this.currentGoalContributionAmount || isNaN(parseFloat(this.currentGoalContributionAmount))) {
+            this.showError('Please enter a valid amount');
+            return;
+        }
+
+        const amount = parseFloat(this.currentGoalContributionAmount);
+        if (amount <= 0) {
+            this.showError('Amount must be greater than 0');
+            return;
+        }
+
+        const currentBalance = this.calculateBalance();
+        if (currentBalance - amount < 0) {
+            this.showError('Insufficient balance! You cannot add more than you have.');
+            return;
+        }
+
+        const goal = this.goals.find(g => g.id === this.currentGoalContributionId);
+        if (!goal) return;
+
+        goal.saved += amount;
+        if (goal.saved > goal.target) {
+            goal.saved = goal.target;
+        }
+
+        this.transactions.unshift({
+            id: Date.now(),
+            description: `Added to goal: ${goal.name}`,
+            amount: amount,
+            type: 'spend',
+            category: 'Goals',
+            date: new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }),
+        });
+
+        this.saveGoals();
+        this.saveTransactions();
+        this.closeGoalContribution();
+        this.render();
+        this.renderGoalsScreen();
+    }
+
+    closeGoalContribution() {
+        document.getElementById('goalContributionModal').style.display = 'none';
+        this.currentGoalContributionId = null;
+        this.currentGoalContributionAmount = '';
+    }
+
+    renderGoalsScreen() {
+        const container = document.getElementById('goalsList');
+        if (!container) return;
+
+        if (this.goals.length === 0) {
+            container.innerHTML = '<p class="empty-state">No goals yet. Create one to get started!</p>';
+            return;
+        }
+
+        container.innerHTML = this.goals.map(goal => {
+            const percentage = Math.min((goal.saved / goal.target) * 100, 100);
+            const isCompleted = goal.saved >= goal.target;
+            return `
+                <div class="goal-item ${isCompleted ? 'completed' : ''}">
+                    <div class="goal-header">
+                        <div class="goal-name">${this.escapeHtml(goal.name)}</div>
+                        <button type="button" class="btn-delete-goal" onclick="tracker.deleteGoal(${goal.id})" title="Delete goal">✕</button>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="goal-progress-bar">
+                            <div class="goal-progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="goal-progress-text">${Math.round(percentage)}%</div>
+                    </div>
+                    <div class="goal-amounts">
+                        <div class="goal-saved">${this.formatCurrency(goal.saved)}</div>
+                        <div class="goal-divider">/</div>
+                        <div class="goal-target">${this.formatCurrency(goal.target)}</div>
+                    </div>
+                    <div class="goal-actions">
+                        <button type="button" class="btn-add-money-goal" onclick="tracker.addMoneyToGoal(${goal.id})">💰 Add Money</button>
+                        ${isCompleted ? '<span class="goal-completed-badge">✓ Completed!</span>' : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     setLanguage(lang) {
@@ -589,7 +902,7 @@ class MoneyTracker {
             this.resetConfirmPending = false;
             this.transactions = [];
             this.saveTransactions();
-            this.closeSettings();
+            this.showScreen('home');
             this.render();
             btn.classList.remove('confirm-click');
             const originalText = btn.getAttribute('data-i18n') ? this.getTranslation('resetBalance') : 'Reset Balance';
@@ -643,7 +956,16 @@ class MoneyTracker {
                 useNumberPad: 'Use Virtual Number Pad',
                 undoBtn: 'Undo',
                 clearAll: 'Clear All',
-                resetBalance: 'Reset Balance'
+                resetBalance: 'Reset Balance',
+                home: 'Home',
+                goals: 'Goals',
+                analytics: 'Analytics',
+                savingsGoals: 'Savings Goals',
+                goalName: 'Goal Name',
+                goalAmount: 'Target Amount',
+                addGoal: 'Add Goal',
+                noGoals: 'No goals yet. Create one to get started!',
+                tips: 'Tips'
             },
             es: {
                 addSpend: 'Agregar o Gastar Dinero',
@@ -679,7 +1001,16 @@ class MoneyTracker {
                 useNumberPad: 'Usar Teclado Numérico Virtual',
                 undoBtn: 'Deshacer',
                 clearAll: 'Limpiar Todo',
-                resetBalance: 'Reiniciar Saldo'
+                resetBalance: 'Reiniciar Saldo',
+                home: 'Inicio',
+                goals: 'Objetivos',
+                analytics: 'Análisis',
+                savingsGoals: 'Objetivos de Ahorro',
+                goalName: 'Nombre del Objetivo',
+                goalAmount: 'Cantidad Objetivo',
+                addGoal: 'Agregar Objetivo',
+                noGoals: '¡Sin objetivos aún. Crea uno para empezar!',
+                tips: 'Consejos'
             },
             fr: {
                 addSpend: 'Ajouter ou Dépenser de l\'Argent',
@@ -715,7 +1046,16 @@ class MoneyTracker {
                 useNumberPad: 'Utiliser le Clavier Numérique Virtuel',
                 undoBtn: 'Annuler',
                 clearAll: 'Tout Effacer',
-                resetBalance: 'Réinitialiser le Solde'
+                resetBalance: 'Réinitialiser le Solde',
+                home: 'Accueil',
+                goals: 'Objectifs',
+                analytics: 'Analytique',
+                savingsGoals: 'Objectifs d\'Épargne',
+                goalName: 'Nom de l\'Objectif',
+                goalAmount: 'Montant Cible',
+                addGoal: 'Ajouter un Objectif',
+                noGoals: 'Pas d\'objectifs pour le moment. Créez-en un pour commencer!',
+                tips: 'Conseils'
             },
             ar: {
                 addSpend: 'إضافة أو إنفاق الأموال',
@@ -751,7 +1091,16 @@ class MoneyTracker {
                 useNumberPad: 'استخدام لوحة الأرقام الافتراضية',
                 undoBtn: 'تراجع',
                 clearAll: 'مسح الكل',
-                resetBalance: 'إعادة تعيين الرصيد'
+                resetBalance: 'إعادة تعيين الرصيد',
+                home: 'الرئيسية',
+                goals: 'الأهداف',
+                analytics: 'التحليلات',
+                savingsGoals: 'أهداف الادخار',
+                goalName: 'اسم الهدف',
+                goalAmount: 'المبلغ المستهدف',
+                addGoal: 'إضافة هدف',
+                noGoals: 'لا توجد أهداف حتى الآن. أنشئ واحدة للبدء!',
+                tips: 'نصائح'
             }
         };
 
@@ -828,6 +1177,15 @@ class MoneyTracker {
 
     loadCurrency() {
         return localStorage.getItem('moneyTrackerCurrency') || 'USD';
+    }
+
+    loadGoals() {
+        const saved = localStorage.getItem('moneyTrackerGoals');
+        return saved ? JSON.parse(saved) : [];
+    }
+
+    saveGoals() {
+        localStorage.setItem('moneyTrackerGoals', JSON.stringify(this.goals));
     }
 
     saveTransactions() {
