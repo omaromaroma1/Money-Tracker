@@ -405,7 +405,13 @@
 
             <div class="content-wrapper">
                 <!-- Undo Button (Floating) -->
-                <button class="btn-undo-floating" id="undoBtn" onclick="tracker.undoLastTransaction()" title="Undo last transaction" style="display: none;">↶ Undo</button>
+                <div class="undo-container" id="undoContainer" style="display: none;">
+                    <svg class="undo-ring" viewBox="0 0 80 80">
+                        <circle class="undo-ring-track" cx="40" cy="40" r="34"/>
+                        <circle class="undo-ring-progress" id="undoRingProgress" cx="40" cy="40" r="34"/>
+                    </svg>
+                    <button class="btn-undo-floating" id="undoBtn" onclick="tracker.undoLastTransaction()">↶ Undo</button>
+                </div>
             </div>
         </div>
     </div>

@@ -72,6 +72,9 @@ class MoneyTracker {
         this.categoriesList = document.getElementById('categoriesList');
         this.categoriesManagerPanel = document.getElementById('categoriesManagerPanel');
         this.undoBtn = document.getElementById('undoBtn');
+        this.undoContainer = document.getElementById('undoContainer');
+        this.undoRingProgress = document.getElementById('undoRingProgress');
+        this.undoTimer = null;
         this.historyModal = document.getElementById('historyModal');
         this.historyTransactionsList = document.getElementById('historyTransactionsList');
         this.historySearchInput = document.getElementById('historySearchInput');
@@ -374,18 +377,34 @@ class MoneyTracker {
     deleteTransaction(id) {
         const transaction = this.transactions.find(t => t.id === id);
         this.lastDeletedTransaction = transaction;
-        this.undoBtn.style.display = 'inline-block';
         this.transactions = this.transactions.filter(t => t.id !== id);
         this.saveTransactions();
         this.render();
+        this.showUndoWithCountdown();
+    }
+
+    showUndoWithCountdown() {
+        if (this.undoTimer) clearTimeout(this.undoTimer);
+        this.undoRingProgress.classList.remove('counting');
+        void this.undoRingProgress.offsetWidth;
+        this.undoContainer.style.display = 'flex';
+        this.undoRingProgress.classList.add('counting');
+        this.undoTimer = setTimeout(() => {
+            this.undoContainer.style.display = 'none';
+            this.undoRingProgress.classList.remove('counting');
+            this.lastDeletedTransaction = null;
+            this.undoTimer = null;
+        }, 10000);
     }
 
     undoLastTransaction() {
         if (this.lastDeletedTransaction) {
+            if (this.undoTimer) { clearTimeout(this.undoTimer); this.undoTimer = null; }
+            this.undoContainer.style.display = 'none';
+            this.undoRingProgress.classList.remove('counting');
             this.transactions.unshift(this.lastDeletedTransaction);
             this.saveTransactions();
             this.lastDeletedTransaction = null;
-            this.undoBtn.style.display = 'none';
             this.render();
         }
     }

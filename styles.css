@@ -2194,25 +2194,79 @@ header p {
     font-size: 0.75em;
 }
 
-.btn-undo-floating {
+.undo-container {
     position: fixed;
     bottom: 90px;
     right: 20px;
-    padding: 12px 20px;
+    width: 80px;
+    height: 80px;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.undo-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    pointer-events: none;
+}
+
+.undo-ring-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 4;
+}
+
+.undo-ring-progress {
+    fill: none;
+    stroke: white;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 213.6;
+    stroke-dashoffset: 0;
+}
+
+@keyframes undoCountdown {
+    from { stroke-dashoffset: 0; }
+    to   { stroke-dashoffset: 213.6; }
+}
+
+.undo-ring-progress.counting {
+    animation: undoCountdown 10s linear forwards;
+}
+
+.btn-undo-floating {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
     border: none;
-    border-radius: 20px;
+    font-size: 0.7em;
     font-weight: 700;
     cursor: pointer;
     box-shadow: var(--shadow-lg);
-    transition: all 0.3s ease;
-    z-index: 50;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    line-height: 1.2;
 }
 
 .btn-undo-floating:hover {
-    transform: translateY(-4px);
+    transform: scale(1.08);
     box-shadow: var(--shadow-xl);
+}
+
+.btn-undo-floating:active {
+    transform: scale(0.95);
 }
 
 .empty-state {
