@@ -774,10 +774,10 @@ class MoneyTracker {
     }
 
     renderStats() {
-        const biggestExpense = this.getBiggestExpense();
-        document.getElementById('biggestExpense').textContent = biggestExpense
-            ? `${biggestExpense.description}: ${this.formatCurrency(biggestExpense.amount)}`
-            : '-';
+        const breakdown = this.getCategoryBreakdown();
+        const topCat = Object.entries(breakdown).sort((a, b) => b[1] - a[1])[0];
+        const el = document.getElementById('biggestExpense');
+        el.textContent = topCat ? `${topCat[0]}: ${this.formatCurrency(topCat[1])}` : '-';
         document.getElementById('totalTransactions').textContent = this.formatNumber(this.transactions.length);
         document.getElementById('dailyAverage').textContent = this.formatCurrency(this.getDailyAverage());
     }
