@@ -357,6 +357,20 @@ class MoneyTracker {
         this.render();
     }
 
+    animateDeleteTransaction(id) {
+        const row = this.historyTransactionsList.querySelector(`[data-id="${id}"]`);
+        if (row) {
+            row.classList.add('deleting');
+            row.addEventListener('animationend', () => {
+                this.deleteTransaction(id);
+                this.filterTransactionsInModal();
+            }, { once: true });
+        } else {
+            this.deleteTransaction(id);
+            this.filterTransactionsInModal();
+        }
+    }
+
     deleteTransaction(id) {
         const transaction = this.transactions.find(t => t.id === id);
         this.lastDeletedTransaction = transaction;
@@ -429,7 +443,6 @@ class MoneyTracker {
         if (addMoneyModal) {
             addMoneyModal.style.display = 'none';
             document.getElementById('amount').value = '';
-            document.getElementById('description').value = '';
             this.numberPad.style.display = 'none';
         }
     }
@@ -517,7 +530,7 @@ class MoneyTracker {
 
         this.historyTransactionsList.innerHTML = transactions.map(transaction => {
             return `
-                <div class="history-transaction-item ${transaction.type}">
+                <div class="history-transaction-item ${transaction.type}" data-id="${transaction.id}">
                     <div class="history-transaction-info">
                         <div class="history-transaction-description">${this.escapeHtml(transaction.description)}</div>
                         <div class="history-transaction-meta">${transaction.date}</div>
@@ -528,7 +541,7 @@ class MoneyTracker {
                         </div>
                         <div class="transaction-actions">
                             <button type="button" class="btn-edit" onclick="tracker.openEditModal(${transaction.id})" title="Edit">✏️</button>
-                            <button type="button" class="btn-delete-modal" onclick="tracker.deleteTransaction(${transaction.id})" title="Delete">🗑️</button>
+                            <button type="button" class="btn-delete-modal" onclick="tracker.animateDeleteTransaction(${transaction.id})" title="Delete">🗑️</button>
                         </div>
                     </div>
                 </div>
