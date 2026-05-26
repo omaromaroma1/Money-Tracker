@@ -1694,20 +1694,31 @@ class MoneyTracker {
 
     // ── Export CSV ─────────────────────────────────────────────
     exportToCSV() {
-        const headers = ['Date', 'Description', 'Type', 'Amount', 'Category'];
-        const rows = this.transactions.map(t => [
+        const headers = ['Date', 'Description', 'Type', 'Amount', 'Category', 'Frequency', 'Next Due'];
+        const txRows = this.transactions.map(t => [
             `"${t.date}"`,
             `"${(t.description || '').replace(/"/g, '""')}"`,
             t.type,
             t.amount.toFixed(2),
-            `"${(t.category || '').replace(/"/g, '""')}"`
+            `"${(t.category || '').replace(/"/g, '""')}"`,
+            '',
+            ''
         ]);
-        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const recRows = this.recurring.map(r => [
+            '',
+            `"${(r.description || '').replace(/"/g, '""')}"`,
+            `recurring-${r.type}`,
+            parseFloat(r.amount).toFixed(2),
+            '',
+            r.frequency,
+            r.nextDue
+        ]);
+        const csv = [headers.join(','), ...[...txRows, ...recRows].map(r => r.join(','))].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `money-tracker-${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1746,37 +1757,62 @@ class MoneyTracker {
                 const headers = parseRow(lines[0]).map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
                 const idx = (name) => headers.indexOf(name);
                 const iDate = idx('date'), iDesc = idx('description'), iType = idx('type'),
-                      iAmt  = idx('amount'), iCat = idx('category');
+                      iAmt  = idx('amount'), iCat = idx('category'),
+                      iFreq = idx('frequency'), iDue = idx('nextdue');
 
                 if (iAmt === -1 || iType === -1) {
                     this.showError('CSV must have "Type" and "Amount" columns.'); return;
                 }
 
-                let imported = 0, skipped = 0;
+                let importedTx = 0, importedRec = 0, skipped = 0;
                 for (let i = 1; i < lines.length; i++) {
                     const cols = parseRow(lines[i]);
                     const type = (cols[iType] || '').toLowerCase();
-                    if (type !== 'add' && type !== 'spend') { skipped++; continue; }
                     const amount = parseFloat(cols[iAmt]);
                     if (!amount || amount <= 0) { skipped++; continue; }
 
-                    this.transactions.push({
-                        id: Date.now() + Math.random() + i,
-                        description: iDesc >= 0 ? (cols[iDesc] || 'Imported') : 'Imported',
-                        amount,
-                        type,
-                        category: iCat >= 0 ? (cols[iCat] || null) : null,
-                        date: iDate >= 0 && cols[iDate]
-                            ? cols[iDate]
-                            : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    });
-                    imported++;
+                    if (type === 'recurring-add' || type === 'recurring-spend') {
+                        const recType = type.replace('recurring-', '');
+                        const freq = iFreq >= 0 ? (cols[iFreq] || 'monthly') : 'monthly';
+                        const validFreqs = ['daily', 'weekly', 'monthly'];
+                        const nextDue = iDue >= 0 && cols[iDue]
+                            ? cols[iDue]
+                            : new Date().toISOString().split('T')[0];
+                        this.recurring.push({
+                            id: Date.now() + Math.random() + i,
+                            description: iDesc >= 0 ? (cols[iDesc] || 'Imported') : 'Imported',
+                            amount,
+                            type: recType,
+                            category: null,
+                            frequency: validFreqs.includes(freq) ? freq : 'monthly',
+                            nextDue,
+                        });
+                        importedRec++;
+                    } else if (type === 'add' || type === 'spend') {
+                        this.transactions.push({
+                            id: Date.now() + Math.random() + i,
+                            description: iDesc >= 0 ? (cols[iDesc] || 'Imported') : 'Imported',
+                            amount,
+                            type,
+                            category: iCat >= 0 ? (cols[iCat] || null) : null,
+                            date: iDate >= 0 && cols[iDate]
+                                ? cols[iDate]
+                                : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        });
+                        importedTx++;
+                    } else {
+                        skipped++;
+                    }
                 }
 
-                if (imported === 0) { this.showError('No valid rows found in CSV.'); return; }
-                this.saveTransactions();
+                if (importedTx === 0 && importedRec === 0) { this.showError('No valid rows found in CSV.'); return; }
+                if (importedTx > 0) this.saveTransactions();
+                if (importedRec > 0) { this.saveRecurring(); this.renderRecurringList(); this.renderRecurringAnalytics(); }
                 this.render();
-                this.showSuccess(`Imported ${imported} transaction${imported !== 1 ? 's' : ''}${skipped ? ` (${skipped} skipped)` : ''}!`);
+                const parts = [];
+                if (importedTx > 0) parts.push(`${importedTx} transaction${importedTx !== 1 ? 's' : ''}`);
+                if (importedRec > 0) parts.push(`${importedRec} recurring rule${importedRec !== 1 ? 's' : ''}`);
+                this.showSuccess(`Imported ${parts.join(' and ')}${skipped ? ` (${skipped} skipped)` : ''}!`);
             } catch (err) {
                 this.showError('Failed to parse CSV. Make sure it\'s a valid file.');
             }
