@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Money Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=17">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="logo-dark.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -48,6 +48,15 @@
                         <span class="action-arrow">→</span>
                     </button>
                 </div>
+                <!-- Quick Adds -->
+                <div class="quick-adds-section">
+                    <div class="quick-adds-header">
+                        <span class="quick-adds-title">⚡ Quick Add</span>
+                        <button class="btn-quick-add-new" onclick="tracker.openQuickAddSetup()">+ New</button>
+                    </div>
+                    <div id="quickAddsList" class="quick-adds-list"></div>
+                </div>
+
                 <button class="btn-recurring-setup" onclick="tracker.openRecurringModal()">🔄 Set Up Recurring Transaction</button>
                 <p class="home-history-hint">📊 View transaction history & stats in <strong>Analytics</strong></p>
 
@@ -325,6 +334,35 @@
                 </div>
             </div>
 
+            <!-- Quick Add Setup Modal -->
+            <div id="quickAddSetupModal" class="transaction-modal" style="display:none;">
+                <div class="transaction-modal-overlay" onclick="tracker.closeQuickAddSetup()"></div>
+                <div class="transaction-modal-content" style="max-width:420px;">
+                    <div class="transaction-modal-header">
+                        <h2>⚡ New Quick Add</h2>
+                        <button class="close-btn" onclick="tracker.closeQuickAddSetup()">✕</button>
+                    </div>
+                    <div class="recurring-form">
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" id="qaDesc" placeholder="e.g. Coffee, Lunch, Salary" maxlength="30">
+                        </div>
+                        <div class="form-group">
+                            <label>Amount</label>
+                            <input type="text" id="qaAmount" placeholder="0.00" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <div class="rec-type-pills">
+                                <button type="button" class="rec-type-pill active" data-type="spend" onclick="tracker.setQAType('spend')">➖ Expense</button>
+                                <button type="button" class="rec-type-pill" data-type="add" onclick="tracker.setQAType('add')">➕ Income</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-submit-modal" onclick="tracker.saveQuickAdd()">⚡ Save Quick Add</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Goal Contribution Modal -->
             <div id="goalContributionModal" class="modal-overlay" style="display: none;">
                 <div class="modal-content">
@@ -525,7 +563,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=11"></script>
+    <script src="script.js?v=12"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

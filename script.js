@@ -4,6 +4,9 @@ class MoneyTracker {
         this.categories = this.loadCategories();
         this.goals = this.loadGoals();
         this.recurring = this.loadRecurring();
+        this.quickAdds = this.loadQuickAdds();
+        this.qaType = 'spend';
+        this.pendingDeleteQuickAddId = null;
         this.lastDeletedTransaction = null;
         this.language = this.loadLanguage();
         this.useNumberPad = this.loadNumberPadSetting();
@@ -27,6 +30,7 @@ class MoneyTracker {
         this.render();
         this.renderRecurringList();
         this.renderRecurringAnalytics();
+        this.renderQuickAdds();
         this.showScreen('home');
     }
 
@@ -1545,6 +1549,120 @@ class MoneyTracker {
 
     saveRecurring() {
         localStorage.setItem('moneyTrackerRecurring', JSON.stringify(this.recurring));
+    }
+
+    // ── Quick Adds ─────────────────────────────────────────────
+    loadQuickAdds() {
+        const saved = localStorage.getItem('moneyTrackerQuickAdds');
+        return saved ? JSON.parse(saved) : [];
+    }
+
+    saveQuickAdds() {
+        localStorage.setItem('moneyTrackerQuickAdds', JSON.stringify(this.quickAdds));
+    }
+
+    renderQuickAdds() {
+        const container = document.getElementById('quickAddsList');
+        if (!container) return;
+        if (this.quickAdds.length === 0) {
+            container.innerHTML = '<p class="quick-adds-empty">Tap <strong>+ New</strong> to create a shortcut</p>';
+            return;
+        }
+        container.innerHTML = this.quickAdds.map(qa => {
+            const isPending = this.pendingDeleteQuickAddId === qa.id;
+            return `
+            <div class="quick-add-card ${qa.type}${isPending ? ' pending-delete' : ''}">
+                <button class="quick-add-delete${isPending ? ' confirm' : ''}" onclick="tracker.deleteQuickAdd(${qa.id})" title="Remove">${isPending ? '?' : '✕'}</button>
+                <button class="quick-add-fire" onclick="tracker.fireQuickAdd(${qa.id})">
+                    <span class="quick-add-icon">${qa.type === 'add' ? '➕' : '➖'}</span>
+                    <span class="quick-add-desc">${this.escapeHtml(qa.description)}</span>
+                    <span class="quick-add-amt">${this.formatCurrency(qa.amount)}</span>
+                </button>
+            </div>
+        `}).join('');
+    }
+
+    openQuickAddSetup() {
+        this.qaType = 'spend';
+        document.getElementById('qaDesc').value = '';
+        document.getElementById('qaAmount').value = '';
+        document.querySelectorAll('#quickAddSetupModal .rec-type-pill').forEach(p => {
+            p.classList.toggle('active', p.dataset.type === 'spend');
+        });
+        document.getElementById('quickAddSetupModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('qaDesc').focus(), 100);
+    }
+
+    closeQuickAddSetup() {
+        document.getElementById('quickAddSetupModal').style.display = 'none';
+    }
+
+    setQAType(type) {
+        this.qaType = type;
+        document.querySelectorAll('#quickAddSetupModal .rec-type-pill').forEach(p => {
+            p.classList.toggle('active', p.dataset.type === type);
+        });
+    }
+
+    saveQuickAdd() {
+        const desc = document.getElementById('qaDesc').value.trim();
+        const amount = parseFloat(document.getElementById('qaAmount').value);
+        if (!desc) { this.showError('Please enter a description'); return; }
+        if (!amount || amount <= 0) { this.showError('Please enter a valid amount'); return; }
+        if (this.quickAdds.length >= 8) { this.showError('Maximum 8 quick adds allowed'); return; }
+        this.quickAdds.push({ id: Date.now(), description: desc, amount, type: this.qaType });
+        this.saveQuickAdds();
+        this.renderQuickAdds();
+        this.closeQuickAddSetup();
+    }
+
+    deleteQuickAdd(id) {
+        if (this.pendingDeleteQuickAddId === id) {
+            this.quickAdds = this.quickAdds.filter(q => q.id !== id);
+            this.pendingDeleteQuickAddId = null;
+            this.saveQuickAdds();
+            this.renderQuickAdds();
+        } else {
+            this.pendingDeleteQuickAddId = id;
+            this.renderQuickAdds();
+            setTimeout(() => {
+                if (this.pendingDeleteQuickAddId === id) {
+                    this.pendingDeleteQuickAddId = null;
+                    this.renderQuickAdds();
+                }
+            }, 3000);
+        }
+    }
+
+    fireQuickAdd(id) {
+        const qa = this.quickAdds.find(q => q.id === id);
+        if (!qa) return;
+        if (qa.type === 'spend') {
+            const bal = this.calculateBalance();
+            if (bal - qa.amount < 0) { this.showError('Insufficient balance!'); return; }
+        }
+        this.transactions.unshift({
+            id: Date.now(),
+            description: qa.description,
+            amount: qa.amount,
+            type: qa.type,
+            category: null,
+            date: new Date().toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            }),
+        });
+        this.saveTransactions();
+        this.render();
+
+        // Flash the card to confirm
+        const cards = document.querySelectorAll('.quick-add-card');
+        cards.forEach(c => {
+            if (c.querySelector('.quick-add-fire')?.getAttribute('onclick')?.includes(id)) {
+                c.classList.add('fired');
+                setTimeout(() => c.classList.remove('fired'), 600);
+            }
+        });
     }
 
     checkRecurring() {
