@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Money Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=13">
+    <link rel="stylesheet" href="styles.css?v=14">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="logo-dark.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -329,14 +329,14 @@
             <div id="goalContributionModal" class="modal-overlay" style="display: none;">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2>Add Money to <span id="goalContributionName">Goal</span></h2>
+                        <h2 id="goalContributionTitle">Add Money to <span id="goalContributionName">Goal</span></h2>
                         <button class="close-btn" onclick="tracker.closeGoalContribution()">✕</button>
                     </div>
                     <div class="modal-body">
                         <div class="contribution-input-wrapper">
                             <input type="text" id="goalContributionInput" placeholder="0.00" inputmode="decimal" autocomplete="off" class="contribution-amount-input" style="display: none;">
                             <div class="contribution-amount-display">
-                                <p>Amount to Add:</p>
+                                <p id="contributionLabel">Amount to Add:</p>
                                 <h1 id="contributionAmount">$0.00</h1>
                             </div>
                         </div>
@@ -359,7 +359,7 @@
                         </div>
                         <div class="contribution-actions">
                             <button class="btn-cancel" onclick="tracker.closeGoalContribution()">Cancel</button>
-                            <button class="btn-confirm-contribution" onclick="tracker.confirmGoalContribution()">Add to Goal</button>
+                            <button class="btn-confirm-contribution" id="goalContributionConfirmBtn" onclick="tracker.confirmGoalContribution()">Add to Goal</button>
                         </div>
                     </div>
                 </div>
@@ -525,7 +525,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=9"></script>
+    <script src="script.js?v=10"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

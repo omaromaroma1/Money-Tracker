@@ -2032,6 +2032,32 @@ header p {
     letter-spacing: 0.5px;
 }
 
+.btn-withdraw-goal {
+    flex: 1;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 1.05em;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+    letter-spacing: 0.5px;
+}
+
+.btn-withdraw-goal:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.btn-withdraw-goal:active {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
 .btn-add-money-goal:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);

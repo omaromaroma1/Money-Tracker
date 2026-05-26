@@ -11,6 +11,7 @@ class MoneyTracker {
         this.resetConfirmPending = false;
         this.currentGoalContributionId = null;
         this.currentGoalContributionAmount = '';
+        this.goalContributionMode = 'add';
         this.pendingDeleteGoalId = null;
         this.recType = 'spend';
         this.recFreq = 'weekly';
@@ -976,12 +977,33 @@ class MoneyTracker {
     }
 
     addMoneyToGoal(goalId) {
+        this.openGoalContributionModal(goalId, 'add');
+    }
+
+    withdrawFromGoal(goalId) {
+        this.openGoalContributionModal(goalId, 'withdraw');
+    }
+
+    openGoalContributionModal(goalId, mode) {
         const goal = this.goals.find(g => g.id === goalId);
         if (!goal) return;
 
         this.currentGoalContributionId = goalId;
         this.currentGoalContributionAmount = '';
+        this.goalContributionMode = mode;
+
         document.getElementById('goalContributionName').textContent = goal.name;
+
+        const isWithdraw = mode === 'withdraw';
+        document.getElementById('goalContributionTitle').innerHTML =
+            `${isWithdraw ? '💸 Withdraw from' : '💰 Add Money to'} <span id="goalContributionName">${this.escapeHtml(goal.name)}</span>`;
+        document.getElementById('contributionLabel').textContent =
+            isWithdraw ? 'Amount to Withdraw:' : 'Amount to Add:';
+        const confirmBtn = document.getElementById('goalContributionConfirmBtn');
+        confirmBtn.textContent = isWithdraw ? 'Withdraw' : 'Add to Goal';
+        confirmBtn.style.background = isWithdraw
+            ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+            : '';
 
         const goalNumberPad = document.getElementById('goalNumberPad');
         const goalInput = document.getElementById('goalContributionInput');
@@ -1042,41 +1064,63 @@ class MoneyTracker {
             return;
         }
 
-        const currentBalance = this.calculateBalance();
-        if (currentBalance - amount < 0) {
-            this.showError('Insufficient balance! You cannot add more than you have.');
-            return;
-        }
-
         const goal = this.goals.find(g => g.id === this.currentGoalContributionId);
         if (!goal) return;
 
-        const wasComplete = goal.saved >= goal.target;
-        goal.saved += amount;
-        if (goal.saved > goal.target) goal.saved = goal.target;
-        const justCompleted = !wasComplete && goal.saved >= goal.target;
+        if (this.goalContributionMode === 'withdraw') {
+            if (amount > goal.saved) {
+                this.showError(`You only have ${this.formatCurrency(goal.saved)} saved in this goal.`);
+                return;
+            }
+            goal.saved -= amount;
+            this.transactions.unshift({
+                id: Date.now(),
+                description: `Withdrew from goal: ${goal.name}`,
+                amount,
+                type: 'add',
+                category: 'Goals',
+                date: new Date().toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                }),
+            });
+        } else {
+            const currentBalance = this.calculateBalance();
+            if (currentBalance - amount < 0) {
+                this.showError('Insufficient balance! You cannot add more than you have.');
+                return;
+            }
+            const wasComplete = goal.saved >= goal.target;
+            goal.saved += amount;
+            if (goal.saved > goal.target) goal.saved = goal.target;
+            const justCompleted = !wasComplete && goal.saved >= goal.target;
 
-        this.transactions.unshift({
-            id: Date.now(),
-            description: `Added to goal: ${goal.name}`,
-            amount: amount,
-            type: 'spend',
-            category: 'Goals',
-            date: new Date().toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }),
-        });
+            this.transactions.unshift({
+                id: Date.now(),
+                description: `Added to goal: ${goal.name}`,
+                amount,
+                type: 'spend',
+                category: 'Goals',
+                date: new Date().toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                }),
+            });
+
+            this.saveGoals();
+            this.saveTransactions();
+            this.closeGoalContribution();
+            this.render();
+            this.renderGoalsScreen();
+            if (justCompleted) this.triggerConfetti();
+            return;
+        }
 
         this.saveGoals();
         this.saveTransactions();
         this.closeGoalContribution();
         this.render();
         this.renderGoalsScreen();
-        if (justCompleted) this.triggerConfetti();
     }
 
     closeGoalContribution() {
@@ -1115,7 +1159,8 @@ class MoneyTracker {
                         <div class="goal-target">${this.formatCurrency(goal.target)}</div>
                     </div>
                     <div class="goal-actions">
-                        <button type="button" class="btn-add-money-goal" onclick="tracker.addMoneyToGoal(${goal.id})">💰 Add Money</button>
+                        <button type="button" class="btn-add-money-goal" onclick="tracker.addMoneyToGoal(${goal.id})">💰 Add</button>
+                        ${goal.saved > 0 ? `<button type="button" class="btn-withdraw-goal" onclick="tracker.withdrawFromGoal(${goal.id})">💸 Withdraw</button>` : ''}
                         ${isCompleted ? '<span class="goal-completed-badge">✓ Completed!</span>' : ''}
                     </div>
                 </div>
