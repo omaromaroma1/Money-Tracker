@@ -2428,6 +2428,19 @@ header p {
     letter-spacing: 0.2px;
 }
 
+.home-history-hint {
+    text-align: center;
+    font-size: 0.82em;
+    color: var(--text-tertiary);
+    margin: 8px 16px 0;
+    padding: 10px 16px;
+}
+
+.home-history-hint strong {
+    color: var(--primary);
+    font-weight: 700;
+}
+
 .btn-recurring-setup:hover {
     border-color: var(--primary);
     color: var(--primary);

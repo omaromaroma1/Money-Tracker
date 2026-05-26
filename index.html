@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Money Tracker</title>
     <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="logo-dark.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Money Tracker">
-    <meta name="theme-color" content="#1a1a1a">
+    <meta name="theme-color" content="#6366f1">
 </head>
 <body>
     <div class="container">
@@ -48,6 +49,7 @@
                     </button>
                 </div>
                 <button class="btn-recurring-setup" onclick="tracker.openRecurringModal()">🔄 Set Up Recurring Transaction</button>
+                <p class="home-history-hint">📊 View transaction history & stats in <strong>Analytics</strong></p>
 
 
                 <!-- Add Money Modal -->
@@ -524,5 +526,12 @@
     </div>
 
     <script src="script.js?v=9"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js');
+            });
+        }
+    </script>
 </body>
 </html>
