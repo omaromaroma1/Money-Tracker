@@ -227,7 +227,7 @@ header p {
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 16px 16px 90px 16px;
+    padding: 16px 16px 100px 16px;
     overflow-y: auto;
     overflow-x: hidden;
     display: none;
@@ -2217,20 +2217,104 @@ header p {
     transform: translateY(-2px);
 }
 
+/* Home: smooth levitate with glowing shadow */
+@keyframes menuFloat0 {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        filter: drop-shadow(0 2px 4px rgba(99,102,241,0.2));
+    }
+    50% {
+        transform: translateY(-13px) scale(1.2);
+        filter: drop-shadow(0 10px 20px rgba(99,102,241,0.75));
+    }
+}
+
+/* Goals: heartbeat double-pulse */
+@keyframes menuFloat1 {
+    0%, 55%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 0px transparent);
+    }
+    12% {
+        transform: scale(1.38);
+        filter: drop-shadow(0 0 12px rgba(99,102,241,0.85));
+    }
+    24% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 4px rgba(99,102,241,0.3));
+    }
+    38% {
+        transform: scale(1.3);
+        filter: drop-shadow(0 0 10px rgba(99,102,241,0.7));
+    }
+}
+
+/* Analytics: surge upward like a rising bar */
+@keyframes menuFloat2 {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        filter: brightness(1) drop-shadow(0 0 0px transparent);
+    }
+    25% {
+        transform: translateY(-6px) scale(1.08);
+        filter: brightness(1.15) drop-shadow(0 4px 8px rgba(99,102,241,0.4));
+    }
+    60% {
+        transform: translateY(-14px) scale(1.28);
+        filter: brightness(1.4) drop-shadow(0 8px 20px rgba(99,102,241,0.9));
+    }
+    80% {
+        transform: translateY(-10px) scale(1.16);
+        filter: brightness(1.2) drop-shadow(0 6px 12px rgba(99,102,241,0.5));
+    }
+}
+
+/* Settings: smooth continuous gear spin */
+@keyframes menuFloat3 {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Active tab bubble pulse */
+@keyframes menuActiveBubble {
+    0%, 100% { transform: translateX(-50%) scale(1);   opacity: 1; }
+    50%       { transform: translateX(-50%) scale(1.12); opacity: 0.8; }
+}
+
+@keyframes menuActivePop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.35); }
+    65%  { transform: scale(0.88); }
+    100% { transform: scale(1); }
+}
+
+@keyframes menuBarSlideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes menuBarBreath {
+    0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.15), 0 0 0 0 rgba(99,102,241,0); }
+    50%       { box-shadow: 0 12px 40px rgba(0,0,0,0.32), 0 4px 12px rgba(0,0,0,0.18), 0 0 24px rgba(99,102,241,0.12); }
+}
+
 .bottom-menu-bar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 70px;
-    background: linear-gradient(180deg, var(--bg-secondary), var(--bg));
-    border-top: 1px solid var(--border-color);
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    height: 68px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 28px;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
     z-index: 99;
-    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.2);
+    animation: menuBarSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               menuBarBreath 4s ease-in-out infinite 0.5s;
+    padding: 0 8px;
 }
 
 .menu-item {
@@ -2238,48 +2322,94 @@ header p {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     background: none;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.25s ease;
     flex: 1;
     height: 100%;
     font-size: 0.85em;
     font-weight: 600;
+    position: relative;
+    border-radius: 20px;
 }
+
+/* Idle animations only on the active tab */
+.menu-item:nth-child(1).active .menu-icon { --idle-anim: menuFloat0 2.6s ease-in-out infinite 0.5s; }
+.menu-item:nth-child(2).active .menu-icon { --idle-anim: menuFloat1 2.2s ease-in-out infinite 0.5s; }
+.menu-item:nth-child(3).active .menu-icon { --idle-anim: menuFloat2 2.8s ease-in-out infinite 0.5s; }
+.menu-item:nth-child(4).active .menu-icon { --idle-anim: menuFloat3 3.5s linear infinite 0.5s; }
 
 .menu-item:hover {
     color: var(--primary);
-    transform: translateY(-2px);
+}
+
+.menu-item:not(.active):hover .menu-icon {
+    animation: none !important;
+    transform: translateY(-8px) scale(1.3);
+    filter: drop-shadow(0 0 10px rgba(99,102,241,0.65));
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                filter 0.22s ease;
 }
 
 .menu-item.active {
     color: var(--primary);
 }
 
+.menu-item .menu-icon {
+    animation: none;
+}
+
+.menu-item.active .menu-icon {
+    animation: menuActivePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               var(--idle-anim);
+}
+
+.menu-item.active::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 46px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--primary)30, var(--primary)12);
+    border-radius: 16px;
+    z-index: -1;
+    border: 1px solid var(--primary)40;
+    animation: menuActiveBubble 2.4s ease-in-out infinite;
+}
+
 .menu-item.active::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    width: 40px;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
     height: 3px;
     background: linear-gradient(90deg, var(--primary), var(--primary-light));
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 .menu-icon {
-    font-size: 1.5em;
+    font-size: 1.6em;
+    display: block;
+    position: relative;
+    z-index: 1;
 }
 
 .menu-label {
-    font-size: 0.75em;
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.2px;
 }
 
 .undo-container {
     position: fixed;
-    bottom: 90px;
+    bottom: 96px;
     right: 20px;
     width: 80px;
     height: 80px;
@@ -2990,7 +3120,7 @@ header p {
 /* Mobile Optimizations */
 @media (max-width: 768px) {
     .screen {
-        padding: 12px 12px 80px 12px;
+        padding: 12px 12px 100px 12px;
     }
 
     header {
@@ -3315,7 +3445,7 @@ header p {
 /* Extra small phones (under 480px) */
 @media (max-width: 480px) {
     .screen {
-        padding: 10px 10px 80px 10px;
+        padding: 10px 10px 100px 10px;
     }
 
     header {
