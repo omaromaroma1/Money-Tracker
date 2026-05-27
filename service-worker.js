@@ -1,4 +1,4 @@
-const CACHE_NAME = 'money-tracker-v29';
+const CACHE_NAME = 'money-tracker-v30';
 const CORE_ASSETS = [
     './',
     './index.html',
