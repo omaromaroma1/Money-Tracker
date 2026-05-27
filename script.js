@@ -863,7 +863,7 @@ class MoneyTracker {
     renderBalance() {
         const balance = this.calculateBalance();
 
-        this.totalBalance.textContent = this.formatCurrency(balance);
+        this.animateBalance(this.totalBalance, balance);
 
         const balanceMinimal = document.getElementById('balanceMinimal');
         if (balanceMinimal) {
@@ -958,30 +958,32 @@ class MoneyTracker {
         const screens = ['quickAddScreen', 'analyticsScreen', 'goalsScreen', 'settingsScreen'];
         screens.forEach(id => {
             const el = document.getElementById(id);
-            if (el) {
-                el.style.display = 'none';
-                el.scrollTop = 0;
-            }
+            if (el) { el.classList.remove('animate-in'); el.style.display = 'none'; }
         });
 
         const header = document.querySelector('header');
         if (header) header.style.display = screenName === 'home' ? 'flex' : 'none';
 
+        const showAndReset = (el) => {
+            if (el) {
+                el.style.display = 'block';
+                el.scrollTop = 0;
+                requestAnimationFrame(() => el.classList.add('animate-in'));
+            }
+        };
+
         if (screenName === 'home') {
-            const el = document.getElementById('quickAddScreen');
-            if (el) el.style.display = 'block';
+            showAndReset(document.getElementById('quickAddScreen'));
         } else if (screenName === 'analytics') {
-            const el = document.getElementById('analyticsScreen');
-            if (el) el.style.display = 'block';
+            showAndReset(document.getElementById('analyticsScreen'));
             setTimeout(() => this.renderCharts(), 50);
         } else if (screenName === 'goals') {
-            const el = document.getElementById('goalsScreen');
-            if (el) el.style.display = 'block';
+            showAndReset(document.getElementById('goalsScreen'));
             this.renderGoalsScreen();
         } else if (screenName === 'settings') {
             const el = document.getElementById('settingsScreen');
+            showAndReset(el);
             if (el) {
-                el.style.display = 'block';
                 this.numberPadToggle.checked = this.useNumberPad;
                 this.updateLanguageButtons();
                 this.updateCurrencyButtons();
@@ -2218,8 +2220,6 @@ class MoneyTracker {
         this._pinBuffer = '';
         const el = document.getElementById('pinLockOverlay');
         if (el) el.style.display = 'flex';
-        const bioBtn = document.querySelector('#pinLockOverlay .pin-key-bio');
-        if (bioBtn) bioBtn.style.display = this.loadBiometricId() ? '' : 'none';
     }
 
     unlockApp() {
@@ -2260,63 +2260,22 @@ class MoneyTracker {
         }
     }
 
-    loadBiometricId() { return localStorage.getItem('moneyTrackerBiometricId'); }
-
-    async registerBiometric() {
-        if (!window.PublicKeyCredential) { this.showError('Passkeys not supported on this browser'); return; }
-        try {
-            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-            if (!available) { this.showError('Face ID / Touch ID not available on this device'); return; }
-            const credential = await navigator.credentials.create({
-                publicKey: {
-                    challenge: crypto.getRandomValues(new Uint8Array(32)),
-                    rp: { name: 'Money Tracker' },
-                    user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'user', displayName: 'User' },
-                    pubKeyCredParams: [
-                        { alg: -7, type: 'public-key' },
-                        { alg: -257, type: 'public-key' }
-                    ],
-                    authenticatorSelection: {
-                        authenticatorAttachment: 'platform',
-                        userVerification: 'required',
-                        residentKey: 'required'
-                    },
-                    timeout: 60000,
-                    attestation: 'none'
-                }
-            });
-            const b64 = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-            localStorage.setItem('moneyTrackerBiometricId', b64);
-            this.showSuccess('Face ID enabled!');
-            this.renderPinSection();
-        } catch (e) {
-            if (e.name !== 'NotAllowedError') this.showError('Could not enable Face ID');
-        }
-    }
-
-    disableBiometric() {
-        localStorage.removeItem('moneyTrackerBiometricId');
-        this.renderPinSection();
-        this.showSuccess('Face ID disabled');
-    }
-
     async tryBiometric() {
         if (!window.PublicKeyCredential) return;
-        const b64 = this.loadBiometricId();
-        if (!b64) return;
         try {
-            const rawId = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            if (!available) return;
             await navigator.credentials.get({
                 publicKey: {
                     challenge: crypto.getRandomValues(new Uint8Array(32)),
                     timeout: 60000,
                     userVerification: 'required',
                     rpId: window.location.hostname || 'localhost',
-                    allowCredentials: [{ id: rawId, type: 'public-key' }]
+                    allowCredentials: []
                 }
             });
             this.unlockApp();
-        } catch (e) { /* user cancelled or face id failed */ }
+        } catch (e) { /* user cancelled or not enrolled */ }
     }
 
     enablePinSetting(pin) {
@@ -2330,7 +2289,6 @@ class MoneyTracker {
         this.pin = null;
         this.pinEnabled = false;
         localStorage.removeItem('moneyTrackerPin');
-        localStorage.removeItem('moneyTrackerBiometricId');
         this.savePinEnabled(false);
     }
 
@@ -2338,12 +2296,9 @@ class MoneyTracker {
         const el = document.getElementById('pinSettingSection');
         if (!el) return;
         if (this.pinEnabled && this.pin) {
-            const hasBio = !!this.loadBiometricId();
-            const bioBtn = hasBio
-                ? `<button class="btn-reset-balance" onclick="tracker.disableBiometric()" style="padding:8px 14px;font-size:0.85em">Disable Face ID</button>`
-                : `<button class="btn-submit-modal" onclick="tracker.registerBiometric()" style="padding:8px 14px;font-size:0.85em">Enable Face ID</button>`;
-            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong>Enabled</strong></span><div style="display:flex;gap:8px;flex-wrap:wrap">${bioBtn}<button class="btn-reset-balance" onclick="tracker.promptDisablePin()" style="padding:8px 18px">Disable PIN</button></div></div>`;
+            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong>Enabled</strong></span><button class="btn-reset-balance" onclick="tracker.promptDisablePin()" style="padding:8px 18px">Disable PIN</button></div>`;
         } else if (this.pinEnabled && !this.pin) {
+            // corrupted state — pinEnabled but no PIN stored; offer direct reset
             el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong style="color:var(--danger)">Error</strong></span><button class="btn-reset-balance" onclick="tracker.disablePinSetting();tracker.renderPinSection();" style="padding:8px 18px">Reset PIN</button></div>`;
         } else {
             el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock</span><button class="btn-submit-modal" onclick="tracker.promptSetPin()" style="padding:8px 18px;font-size:0.9em">Set PIN</button></div>`;

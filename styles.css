@@ -203,11 +203,13 @@
     box-shadow: 0 24px 64px rgba(8,100,130,0.18), 0 0 0 1px rgba(8,145,178,0.08);
 }
 
-[data-theme="light"] .setting-group {
+[data-theme="light"] .setting-group,
+[data-theme="light"] .setting-accordion {
     box-shadow: 0 2px 14px rgba(8,100,130,0.06);
 }
 
-[data-theme="light"] .setting-group:hover {
+[data-theme="light"] .setting-group:hover,
+[data-theme="light"] .setting-accordion.open {
     border-color: rgba(8,145,178,0.22);
     box-shadow: 0 6px 24px rgba(8,100,130,0.1);
 }
@@ -2269,11 +2271,74 @@ header p {
     transition: all 0.2s ease;
 }
 
-.setting-group:hover {
-    border-color: var(--primary)50;
+/* ── Accordion settings ── */
+.setting-accordion {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
-
-.setting-group label {
+.setting-accordion.open {
+    border-color: rgba(34,211,238,0.35);
+    box-shadow: 0 4px 24px rgba(34,211,238,0.08);
+}
+.setting-accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 17px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    gap: 12px;
+    text-align: left;
+}
+.setting-accordion-header:active {
+    background: rgba(255,255,255,0.04);
+}
+.setting-accordion-label {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    flex: 1;
+}
+.setting-accordion-icon {
+    font-size: 1.1em;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(34,211,238,0.1);
+    border-radius: 11px;
+    flex-shrink: 0;
+}
+.setting-accordion-title {
+    font-size: 1em;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.setting-accordion-chevron {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.setting-accordion.open .setting-accordion-chevron {
+    transform: rotate(180deg);
+}
+.setting-accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 20px;
+    padding-bottom: 0;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1),
+                padding-bottom 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.setting-accordion-body label:not(.toggle-switch) {
     display: block;
     font-weight: 700;
     color: var(--text-primary);
@@ -4230,6 +4295,13 @@ header p {
 .setting-group:nth-child(4)                       { animation-delay: 0.15s; }
 .setting-group:nth-child(5)                       { animation-delay: 0.20s; }
 .setting-group:nth-child(n+6)                     { animation-delay: 0.25s; }
+.setting-accordion                                { animation: itemPop 0.38s cubic-bezier(0.34,1.56,0.64,1) both; }
+.setting-accordion:nth-child(2)                   { animation-delay: 0.04s; }
+.setting-accordion:nth-child(3)                   { animation-delay: 0.08s; }
+.setting-accordion:nth-child(4)                   { animation-delay: 0.12s; }
+.setting-accordion:nth-child(5)                   { animation-delay: 0.16s; }
+.setting-accordion:nth-child(6)                   { animation-delay: 0.20s; }
+.setting-accordion:nth-child(n+7)                 { animation-delay: 0.24s; }
 
 /* Recurring & analytics items entrance */
 .recurring-item                                   { animation: itemPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
@@ -4268,6 +4340,7 @@ header p {
 
 .goal-item                                        { border-radius: 28px; }
 .setting-group                                    { border-radius: 26px; background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-secondary) 100%); }
+.setting-accordion                                { border-radius: 22px; background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-secondary) 100%); }
 .goals-input-section                              { border-radius: 24px; }
 .goals-help-section                               { border-radius: 22px; }
 .chart-container                                  { border-radius: 26px; }
@@ -4345,7 +4418,7 @@ header p {
 .lang-btn, .currency-btn                          { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
 .transaction-item, .history-transaction-item,
-.goal-item, .setting-group,
+.goal-item, .setting-group, .setting-accordion,
 .quick-add-card, .rec-analytics-item,
 .chart-container                                  { transition: box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease; }
 
@@ -4750,3 +4823,45 @@ header p {
 }
 .bal-digit-up-new   { animation: balNewUp   0.32s cubic-bezier(0.4,0,0.2,1) forwards; }
 .bal-digit-down-new { animation: balNewDown 0.32s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+/* ── Screen enter animations ── */
+@keyframes pageSlideDown {
+    from { opacity: 0; transform: translateY(-22px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pageSlideUp {
+    from { opacity: 0; transform: translateY(26px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pageScalePop {
+    from { opacity: 0; transform: scale(0.91) translateY(14px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@keyframes pageFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Home */
+#quickAddScreen.animate-in .balance-display-minimal          { animation: pageSlideDown 0.55s cubic-bezier(0.34,1.56,0.64,1) both; }
+#quickAddScreen.animate-in .action-bars-container            { animation: pageSlideUp   0.52s cubic-bezier(0.34,1.56,0.64,1) 0.07s both; }
+#quickAddScreen.animate-in #insightsSection,
+#quickAddScreen.animate-in .quick-adds-section               { animation: pageSlideUp   0.5s  cubic-bezier(0.34,1.56,0.64,1) 0.14s both; }
+#quickAddScreen.animate-in .btn-recurring-setup,
+#quickAddScreen.animate-in .home-history-hint                { animation: pageFadeUp    0.4s  ease 0.21s both; }
+
+/* Analytics */
+#analyticsScreen.animate-in .summary                         { animation: pageScalePop  0.5s  cubic-bezier(0.34,1.56,0.64,1) both; }
+#analyticsScreen.animate-in .stats-section                   { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.09s both; }
+#analyticsScreen.animate-in .breakdown-section               { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.17s both; }
+#analyticsScreen.animate-in .chart-section:nth-of-type(4)   { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.24s both; }
+#analyticsScreen.animate-in .chart-section:nth-of-type(5)   { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.31s both; }
+#analyticsScreen.animate-in .chart-section:nth-of-type(6)   { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.38s both; }
+#analyticsScreen.animate-in .screen-nav                      { animation: pageFadeUp    0.4s  ease 0.42s both; }
+
+/* Goals */
+#goalsScreen.animate-in .goals-container > h2               { animation: pageSlideDown 0.52s cubic-bezier(0.34,1.56,0.64,1) both; }
+#goalsScreen.animate-in .goals-help-section                 { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.08s both; }
+#goalsScreen.animate-in .goals-input-section                { animation: pageSlideUp   0.48s cubic-bezier(0.34,1.56,0.64,1) 0.15s both; }
+#goalsScreen.animate-in .goals-list                         { animation: pageSlideUp   0.5s  cubic-bezier(0.34,1.56,0.64,1) 0.21s both; }
+#goalsScreen.animate-in .screen-nav                         { animation: pageFadeUp    0.4s  ease 0.27s both; }

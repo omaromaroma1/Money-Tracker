@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Money Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=32">
+    <link rel="stylesheet" href="styles.css?v=34">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="logo-dark.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -426,102 +426,188 @@
                 <div class="settings-container">
                     <h2 data-i18n="settings">Settings</h2>
 
-                    <div class="setting-group">
-                        <label data-i18n="language">Language</label>
-                        <div class="language-options">
-                            <button class="lang-btn" onclick="tracker.setLanguage('en')" data-lang="en">English</button>
-                            <button class="lang-btn" onclick="tracker.setLanguage('es')" data-lang="es">Español</button>
-                            <button class="lang-btn" onclick="tracker.setLanguage('fr')" data-lang="fr">Français</button>
-                            <button class="lang-btn" onclick="tracker.setLanguage('ar')" data-lang="ar">العربية</button>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <div class="toggle-label-wrapper">
-                            <span data-i18n="useNumberPad">Use Virtual Number Pad</span>
-                            <label for="numberPadToggle" class="toggle-switch">
-                                <input type="checkbox" id="numberPadToggle" onchange="tracker.toggleNumberPadOption()">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <button class="btn-reset-balance" id="resetBalanceBtn" onclick="tracker.handleResetClick()" data-i18n="resetBalance">Reset Balance</button>
-                    </div>
-
-                    <div class="setting-group">
-                        <label data-i18n="currency">Base Currency</label>
-                        <div class="currency-options">
-                            <button class="currency-btn" onclick="tracker.setCurrency('USD')" data-currency="USD">$ USD</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('EUR')" data-currency="EUR">€ EUR</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('GBP')" data-currency="GBP">£ GBP</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('QAR')" data-currency="QAR">ر.ق QAR</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('AED')" data-currency="AED">د.إ AED</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('SAR')" data-currency="SAR">﷼ SAR</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('EGP')" data-currency="EGP">£ EGP</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('INR')" data-currency="INR">₹ INR</button>
-                            <button class="currency-btn" onclick="tracker.setCurrency('JPY')" data-currency="JPY">¥ JPY</button>
-                        </div>
-                        <div class="toggle-label-wrapper" style="margin-top:14px;">
-                            <span class="multi-currency-label">Multi Currency</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="multiCurrencyToggle" onchange="tracker.toggleMultiCurrency(this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div id="secondaryCurrencyPills" class="secondary-currency-pills" style="display:none;">
-                            <p class="secondary-currency-hint">Select extra currencies to use when spending</p>
-                            <div class="secondary-currency-options" id="secondaryCurrencyOptions"></div>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <div class="toggle-label-wrapper">
-                            <span>Dark / Light Mode</span>
-                            <button class="btn-theme-toggle" onclick="tracker.toggleTheme()" title="Toggle theme">
-                                <span class="theme-icon">🌙</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="setting-group">
-                        <button class="btn-export-csv" onclick="tracker.exportToCSV()">📤 Export to CSV</button>
-                        <button class="btn-import-csv" onclick="document.getElementById('csvFileInput').click()">📥 Import from CSV</button>
-                        <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="tracker.importFromCSV(this)">
-                    </div>
-
-                    <div class="setting-group">
-                        <div class="setting-group-title">⚡ Quick Adds</div>
-                        <div id="settingsQuickAddsList" class="settings-quick-adds-list"></div>
-                        <div class="settings-qa-form">
-                            <input type="text" id="settingsQaDesc" placeholder="Description (e.g. Coffee)" maxlength="30">
-                            <input type="text" id="settingsQaAmount" placeholder="Amount" inputmode="decimal" autocomplete="off">
-                            <div class="rec-type-pills" style="margin-top:2px;">
-                                <button type="button" class="rec-type-pill active" data-type="spend" onclick="tracker.setQAType('spend')">➖ Expense</button>
-                                <button type="button" class="rec-type-pill" data-type="add" onclick="tracker.setQAType('add')">➕ Income</button>
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">🎨</span>
+                                <span class="setting-accordion-title">Appearance</span>
                             </div>
-                            <button type="button" class="btn-save-qa" onclick="tracker.saveQuickAdd()">+ Add Shortcut</button>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div class="toggle-label-wrapper">
+                                <span>Dark / Light Mode</span>
+                                <button class="btn-theme-toggle" onclick="tracker.toggleTheme()" title="Toggle theme">
+                                    <span class="theme-icon">🌙</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="setting-group">
-                        <div class="setting-group-title">🔄 Recurring Transactions</div>
-                        <div id="recurringList" class="recurring-list"></div>
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">💱</span>
+                                <span class="setting-accordion-title">Currency</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <label data-i18n="currency">Base Currency</label>
+                            <div class="currency-options">
+                                <button class="currency-btn" onclick="tracker.setCurrency('USD')" data-currency="USD">$ USD</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('EUR')" data-currency="EUR">€ EUR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('GBP')" data-currency="GBP">£ GBP</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('QAR')" data-currency="QAR">ر.ق QAR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('AED')" data-currency="AED">د.إ AED</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('SAR')" data-currency="SAR">﷼ SAR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('EGP')" data-currency="EGP">£ EGP</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('INR')" data-currency="INR">₹ INR</button>
+                                <button class="currency-btn" onclick="tracker.setCurrency('JPY')" data-currency="JPY">¥ JPY</button>
+                            </div>
+                            <div class="toggle-label-wrapper" style="margin-top:14px;">
+                                <span class="multi-currency-label">Multi Currency</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="multiCurrencyToggle" onchange="tracker.toggleMultiCurrency(this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="secondaryCurrencyPills" class="secondary-currency-pills" style="display:none;">
+                                <p class="secondary-currency-hint">Select extra currencies to use when spending</p>
+                                <div class="secondary-currency-options" id="secondaryCurrencyOptions"></div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="setting-group" id="budgetSettingGroup">
-                        <div class="setting-group-title">💰 Monthly Budgets</div>
-                        <div id="budgetsList"></div>
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">🌐</span>
+                                <span class="setting-accordion-title">Language</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div class="language-options">
+                                <button class="lang-btn" onclick="tracker.setLanguage('en')" data-lang="en">English</button>
+                                <button class="lang-btn" onclick="tracker.setLanguage('es')" data-lang="es">Español</button>
+                                <button class="lang-btn" onclick="tracker.setLanguage('fr')" data-lang="fr">Français</button>
+                                <button class="lang-btn" onclick="tracker.setLanguage('ar')" data-lang="ar">العربية</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="setting-group">
-                        <div id="pinSettingSection"></div>
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">🔒</span>
+                                <span class="setting-accordion-title">Security</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div id="pinSettingSection"></div>
+                        </div>
                     </div>
 
-                    <div class="setting-group">
-                        <button class="btn-manage-categories" onclick="tracker.toggleCategoriesManager()" data-i18n="manageCategories">⚙️ Manage Categories</button>
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">🏷️</span>
+                                <span class="setting-accordion-title">Categories</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <button class="btn-manage-categories" onclick="tracker.toggleCategoriesManager()" data-i18n="manageCategories">⚙️ Manage Categories</button>
+                        </div>
                     </div>
+
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">⚡</span>
+                                <span class="setting-accordion-title">Quick Adds</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div id="settingsQuickAddsList" class="settings-quick-adds-list"></div>
+                            <div class="settings-qa-form">
+                                <input type="text" id="settingsQaDesc" placeholder="Description (e.g. Coffee)" maxlength="30">
+                                <input type="text" id="settingsQaAmount" placeholder="Amount" inputmode="decimal" autocomplete="off">
+                                <div class="rec-type-pills" style="margin-top:2px;">
+                                    <button type="button" class="rec-type-pill active" data-type="spend" onclick="tracker.setQAType('spend')">➖ Expense</button>
+                                    <button type="button" class="rec-type-pill" data-type="add" onclick="tracker.setQAType('add')">➕ Income</button>
+                                </div>
+                                <button type="button" class="btn-save-qa" onclick="tracker.saveQuickAdd()">+ Add Shortcut</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">🔄</span>
+                                <span class="setting-accordion-title">Recurring Transactions</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div id="recurringList" class="recurring-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="setting-accordion" id="budgetSettingGroup">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">💰</span>
+                                <span class="setting-accordion-title">Monthly Budgets</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div id="budgetsList"></div>
+                        </div>
+                    </div>
+
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">🔢</span>
+                                <span class="setting-accordion-title">Number Pad</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div class="toggle-label-wrapper">
+                                <span data-i18n="useNumberPad">Use Virtual Number Pad</span>
+                                <label for="numberPadToggle" class="toggle-switch">
+                                    <input type="checkbox" id="numberPadToggle" onchange="tracker.toggleNumberPadOption()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setting-accordion">
+                        <button class="setting-accordion-header" onclick="toggleAccordion(this)">
+                            <div class="setting-accordion-label">
+                                <span class="setting-accordion-icon">💾</span>
+                                <span class="setting-accordion-title">Data</span>
+                            </div>
+                            <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="setting-accordion-body">
+                            <div style="display:flex;flex-direction:column;gap:10px;">
+                                <button class="btn-export-csv" onclick="tracker.exportToCSV()">📤 Export to CSV</button>
+                                <button class="btn-import-csv" onclick="document.getElementById('csvFileInput').click()">📥 Import from CSV</button>
+                                <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="tracker.importFromCSV(this)">
+                                <button class="btn-reset-balance" id="resetBalanceBtn" onclick="tracker.handleResetClick()" data-i18n="resetBalance">Reset Balance</button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -639,12 +725,19 @@
         </div>
     </div>
 
-    <script src="script.js?v=16"></script>
+    <script src="script.js?v=15"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js');
             });
+        }
+        function toggleAccordion(btn) {
+            const acc = btn.parentElement;
+            const body = btn.nextElementSibling;
+            const opening = acc.classList.toggle('open');
+            body.style.maxHeight = opening ? body.scrollHeight + 'px' : '0';
+            body.style.paddingBottom = opening ? '28px' : '0';
         }
     </script>
 </body>
