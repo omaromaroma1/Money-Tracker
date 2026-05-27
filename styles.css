@@ -2289,7 +2289,7 @@ header p {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 17px 20px;
+    padding: 22px 20px;
     background: none;
     border: none;
     cursor: pointer;
@@ -2307,8 +2307,8 @@ header p {
     flex: 1;
 }
 .setting-accordion-icon {
-    font-size: 1.1em;
-    width: 36px;
+    font-size: 1.45em;
+    width: 44px;
     height: 36px;
     display: flex;
     align-items: center;
@@ -2318,7 +2318,7 @@ header p {
     flex-shrink: 0;
 }
 .setting-accordion-title {
-    font-size: 1em;
+    font-size: 1.35em;
     font-weight: 700;
     color: var(--text-primary);
 }

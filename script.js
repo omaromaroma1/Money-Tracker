@@ -431,9 +431,30 @@ class MoneyTracker {
         }
     }
 
+    _syncGoalForTransaction(tx, isUndo) {
+        if (!tx || tx.category !== 'Goals') return;
+        const addMatch = tx.description.match(/^Added to goal: (.+)$/);
+        const withdrawMatch = tx.description.match(/^Withdrew from goal: (.+)$/);
+        const goal = addMatch
+            ? this.goals.find(g => g.name === addMatch[1])
+            : withdrawMatch ? this.goals.find(g => g.name === withdrawMatch[1]) : null;
+        if (!goal) return;
+        if (addMatch) {
+            goal.saved = isUndo
+                ? Math.min(goal.target, goal.saved + tx.amount)
+                : Math.max(0, goal.saved - tx.amount);
+        } else {
+            goal.saved = isUndo
+                ? Math.max(0, goal.saved - tx.amount)
+                : Math.min(goal.target, goal.saved + tx.amount);
+        }
+        this.saveGoals();
+    }
+
     deleteTransaction(id) {
         const transaction = this.transactions.find(t => t.id === id);
         this.lastDeletedTransaction = transaction;
+        this._syncGoalForTransaction(transaction, false);
         this.transactions = this.transactions.filter(t => t.id !== id);
         this.saveTransactions();
         this.render();
@@ -459,6 +480,7 @@ class MoneyTracker {
             if (this.undoTimer) { clearTimeout(this.undoTimer); this.undoTimer = null; }
             this.undoContainer.style.display = 'none';
             this.undoRingProgress.classList.remove('counting');
+            this._syncGoalForTransaction(this.lastDeletedTransaction, true);
             this.transactions.unshift(this.lastDeletedTransaction);
             this.saveTransactions();
             this.lastDeletedTransaction = null;
@@ -824,40 +846,21 @@ class MoneyTracker {
     }
 
     animateBalance(element, toValue) {
-        const fromValue = this._lastBalance;
-        this._lastBalance = toValue;
-
-        const toStr = this.formatCurrency(toValue);
-
-        if (fromValue === null || fromValue === toValue) {
-            element.textContent = toStr;
-            return;
-        }
-
-        const fromStr = this.formatCurrency(fromValue);
-        if (fromStr === toStr) return;
-
-        // Different string lengths (e.g. crossing 1000): just swap instantly
-        if (fromStr.length !== toStr.length) {
-            element.textContent = toStr;
-            return;
-        }
-
-        const dir = toValue > fromValue ? 'up' : 'down';
-        let html = '';
-        for (let i = 0; i < toStr.length; i++) {
-            const fc = fromStr[i];
-            const tc = toStr[i];
-            if (fc === tc) {
-                html += `<span class="bal-char">${tc}</span>`;
-            } else {
-                html += `<span class="bal-digit-slot">` +
-                    `<span class="bal-digit bal-digit-${dir}-old">${fc}</span>` +
-                    `<span class="bal-digit bal-digit-${dir}-new">${tc}</span>` +
-                    `</span>`;
-            }
-        }
-        element.innerHTML = html;
+        if (element._rafId) { cancelAnimationFrame(element._rafId); element._rafId = null; }
+        const fromValue = element._lastBalVal ?? toValue;
+        element._lastBalVal = toValue;
+        element.textContent = this.formatCurrency(toValue);
+        if (fromValue === toValue) return;
+        const duration = 550;
+        const start = performance.now();
+        const tick = (now) => {
+            const t = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+            element.textContent = this.formatCurrency(fromValue + (toValue - fromValue) * ease);
+            if (t < 1) { element._rafId = requestAnimationFrame(tick); }
+            else { element._rafId = null; }
+        };
+        element._rafId = requestAnimationFrame(tick);
     }
 
     renderBalance() {
@@ -982,6 +985,13 @@ class MoneyTracker {
             this.renderGoalsScreen();
         } else if (screenName === 'settings') {
             const el = document.getElementById('settingsScreen');
+            if (el) {
+                el.querySelectorAll('.setting-accordion.open').forEach(acc => {
+                    acc.classList.remove('open');
+                    const body = acc.querySelector('.setting-accordion-body');
+                    if (body) { body.style.maxHeight = '0'; body.style.paddingBottom = '0'; }
+                });
+            }
             showAndReset(el);
             if (el) {
                 this.numberPadToggle.checked = this.useNumberPad;
