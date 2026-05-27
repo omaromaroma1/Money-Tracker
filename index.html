@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Money Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=17">
+    <link rel="stylesheet" href="styles.css?v=32">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="logo-dark.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,6 +13,7 @@
     <meta name="theme-color" content="#6366f1">
 </head>
 <body>
+    <div id="recurringFiredBanner" class="recurring-fired-banner" style="display:none;"></div>
     <div class="container">
         <header>
             <div class="header-content">
@@ -48,11 +49,13 @@
                         <span class="action-arrow">→</span>
                     </button>
                 </div>
+                <!-- Insights -->
+                <div id="insightsSection" class="insights-section" style="display:none;"></div>
+
                 <!-- Quick Adds -->
-                <div class="quick-adds-section">
+                <div id="quickAddsSection" class="quick-adds-section">
                     <div class="quick-adds-header">
                         <span class="quick-adds-title">⚡ Quick Add</span>
-                        <button class="btn-quick-add-new" onclick="tracker.openQuickAddSetup()">+ New</button>
                     </div>
                     <div id="quickAddsList" class="quick-adds-list"></div>
                 </div>
@@ -136,6 +139,10 @@
                                 <select id="categorySpend" style="display: none;">
                                     <option value="">Select category</option>
                                 </select>
+                            </div>
+                            <div class="form-group" id="spendCurrencyGroup" style="display:none;">
+                                <label>Currency</label>
+                                <div id="spendCurrencyPills" class="spend-currency-pills"></div>
                             </div>
                             <button type="button" class="btn-submit-modal" onclick="tracker.submitForm('spend')" data-i18n="spendMoney">- Spend Money</button>
                         </form>
@@ -334,35 +341,6 @@
                 </div>
             </div>
 
-            <!-- Quick Add Setup Modal -->
-            <div id="quickAddSetupModal" class="transaction-modal" style="display:none;">
-                <div class="transaction-modal-overlay" onclick="tracker.closeQuickAddSetup()"></div>
-                <div class="transaction-modal-content" style="max-width:420px;">
-                    <div class="transaction-modal-header">
-                        <h2>⚡ New Quick Add</h2>
-                        <button class="close-btn" onclick="tracker.closeQuickAddSetup()">✕</button>
-                    </div>
-                    <div class="recurring-form">
-                        <div class="form-group">
-                            <label>Description</label>
-                            <input type="text" id="qaDesc" placeholder="e.g. Coffee, Lunch, Salary" maxlength="30">
-                        </div>
-                        <div class="form-group">
-                            <label>Amount</label>
-                            <input type="text" id="qaAmount" placeholder="0.00" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="form-group">
-                            <label>Type</label>
-                            <div class="rec-type-pills">
-                                <button type="button" class="rec-type-pill active" data-type="spend" onclick="tracker.setQAType('spend')">➖ Expense</button>
-                                <button type="button" class="rec-type-pill" data-type="add" onclick="tracker.setQAType('add')">➕ Income</button>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-submit-modal" onclick="tracker.saveQuickAdd()">⚡ Save Quick Add</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Goal Contribution Modal -->
             <div id="goalContributionModal" class="modal-overlay" style="display: none;">
                 <div class="modal-content">
@@ -473,7 +451,7 @@
                     </div>
 
                     <div class="setting-group">
-                        <label data-i18n="currency">Currency</label>
+                        <label data-i18n="currency">Base Currency</label>
                         <div class="currency-options">
                             <button class="currency-btn" onclick="tracker.setCurrency('USD')" data-currency="USD">$ USD</button>
                             <button class="currency-btn" onclick="tracker.setCurrency('EUR')" data-currency="EUR">€ EUR</button>
@@ -484,6 +462,17 @@
                             <button class="currency-btn" onclick="tracker.setCurrency('EGP')" data-currency="EGP">£ EGP</button>
                             <button class="currency-btn" onclick="tracker.setCurrency('INR')" data-currency="INR">₹ INR</button>
                             <button class="currency-btn" onclick="tracker.setCurrency('JPY')" data-currency="JPY">¥ JPY</button>
+                        </div>
+                        <div class="toggle-label-wrapper" style="margin-top:14px;">
+                            <span class="multi-currency-label">Multi Currency</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="multiCurrencyToggle" onchange="tracker.toggleMultiCurrency(this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div id="secondaryCurrencyPills" class="secondary-currency-pills" style="display:none;">
+                            <p class="secondary-currency-hint">Select extra currencies to use when spending</p>
+                            <div class="secondary-currency-options" id="secondaryCurrencyOptions"></div>
                         </div>
                     </div>
 
@@ -503,27 +492,35 @@
                     </div>
 
                     <div class="setting-group">
+                        <div class="setting-group-title">⚡ Quick Adds</div>
+                        <div id="settingsQuickAddsList" class="settings-quick-adds-list"></div>
+                        <div class="settings-qa-form">
+                            <input type="text" id="settingsQaDesc" placeholder="Description (e.g. Coffee)" maxlength="30">
+                            <input type="text" id="settingsQaAmount" placeholder="Amount" inputmode="decimal" autocomplete="off">
+                            <div class="rec-type-pills" style="margin-top:2px;">
+                                <button type="button" class="rec-type-pill active" data-type="spend" onclick="tracker.setQAType('spend')">➖ Expense</button>
+                                <button type="button" class="rec-type-pill" data-type="add" onclick="tracker.setQAType('add')">➕ Income</button>
+                            </div>
+                            <button type="button" class="btn-save-qa" onclick="tracker.saveQuickAdd()">+ Add Shortcut</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
                         <div class="setting-group-title">🔄 Recurring Transactions</div>
                         <div id="recurringList" class="recurring-list"></div>
                     </div>
 
+                    <div class="setting-group" id="budgetSettingGroup">
+                        <div class="setting-group-title">💰 Monthly Budgets</div>
+                        <div id="budgetsList"></div>
+                    </div>
+
+                    <div class="setting-group">
+                        <div id="pinSettingSection"></div>
+                    </div>
+
                     <div class="setting-group">
                         <button class="btn-manage-categories" onclick="tracker.toggleCategoriesManager()" data-i18n="manageCategories">⚙️ Manage Categories</button>
-                        <div id="categoriesManagerPanel" style="display: none;" class="categories-panel-overlay">
-                            <div class="categories-panel">
-                                <div class="categories-panel-header">
-                                    <h3 data-i18n="editCategories">Edit Categories</h3>
-                                    <button type="button" class="close-btn">✕</button>
-                                </div>
-                                <div class="categories-panel-content">
-                                    <div class="category-input-group">
-                                        <input type="text" id="newCategoryInput" placeholder="Add new category" maxlength="20" data-i18n-placeholder="addNewCategory">
-                                        <button type="button" class="btn-add-category" onclick="tracker.addCategory()" data-i18n="addBtn">+ Add</button>
-                                    </div>
-                                    <div id="categoriesList" class="categories-list"></div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -563,7 +560,86 @@
         </div>
     </div>
 
-    <script src="script.js?v=12"></script>
+    <!-- PIN Lock Overlay -->
+    <!-- PIN lock screen -->
+    <div id="pinLockOverlay" class="pin-lock-overlay" style="display:none;">
+        <div class="pin-lock-card">
+            <div class="pin-lock-icon">🔒</div>
+            <h2 class="pin-lock-title">Money Tracker</h2>
+            <p class="pin-lock-subtitle">Enter your PIN to continue</p>
+            <div id="pinDots" class="pin-dots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+            <p id="pinError" class="pin-error"></p>
+            <div class="pin-keypad">
+                <button class="pin-key" onclick="tracker.addPinDigit('1')">1</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('2')">2</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('3')">3</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('4')">4</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('5')">5</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('6')">6</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('7')">7</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('8')">8</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('9')">9</button>
+                <button class="pin-key pin-key-bio" onclick="tracker.tryBiometric()" title="Use biometric / passkey">🪪</button>
+                <button class="pin-key" onclick="tracker.addPinDigit('0')">0</button>
+                <button class="pin-key pin-key-del" onclick="tracker.deletePinDigit()">⌫</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN setup modal (Set / Disable PIN) -->
+    <div id="pinSetupOverlay" class="pin-setup-overlay" style="display:none;">
+        <div class="pin-setup-card">
+            <div class="pin-lock-icon" id="pinSetupIcon">🔐</div>
+            <div class="pin-step-label" id="pinSetupStep">Step 1 of 2</div>
+            <h2 class="pin-lock-title" id="pinSetupTitle">Create your PIN</h2>
+            <p class="pin-lock-subtitle" id="pinSetupSubtitle">Choose a 4-digit PIN</p>
+            <div id="pinSetupDots" class="pin-dots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+            <p id="pinSetupError" class="pin-error"></p>
+            <div class="pin-keypad">
+                <button class="pin-key" onclick="tracker.setupAddDigit('1')">1</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('2')">2</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('3')">3</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('4')">4</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('5')">5</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('6')">6</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('7')">7</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('8')">8</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('9')">9</button>
+                <button class="pin-key pin-key-del" onclick="tracker.setupDeleteDigit()">⌫</button>
+                <button class="pin-key" onclick="tracker.setupAddDigit('0')">0</button>
+                <button class="pin-key pin-key-cancel" onclick="tracker.closePinSetup()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories modal — direct child of body so position:fixed isn't clipped by transformed ancestors -->
+    <div id="categoriesManagerPanel" style="display: none;" class="categories-panel-overlay">
+        <div class="categories-panel">
+            <div class="categories-panel-header">
+                <h3 data-i18n="editCategories">Edit Categories</h3>
+                <button type="button" class="close-btn">✕</button>
+            </div>
+            <div class="categories-panel-content">
+                <div class="category-input-group">
+                    <input type="text" id="newCategoryInput" placeholder="Add new category" maxlength="20" data-i18n-placeholder="addNewCategory">
+                    <button type="button" class="btn-add-category" onclick="tracker.addCategory()" data-i18n="addBtn">+ Add</button>
+                </div>
+                <div id="categoriesList" class="categories-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=15"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

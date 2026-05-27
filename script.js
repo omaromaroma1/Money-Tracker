@@ -5,12 +5,16 @@ class MoneyTracker {
         this.goals = this.loadGoals();
         this.recurring = this.loadRecurring();
         this.quickAdds = this.loadQuickAdds();
+        this.budgets = this.loadBudgets();
         this.qaType = 'spend';
         this.pendingDeleteQuickAddId = null;
         this.lastDeletedTransaction = null;
         this.language = this.loadLanguage();
         this.useNumberPad = this.loadNumberPadSetting();
         this.currency = this.loadCurrency();
+        this.multiCurrencyEnabled = this.loadMultiCurrency();
+        this.secondaryCurrencies = this.loadSecondaryCurrencies();
+        this._spendCurrency = null;
         this.resetConfirmPending = false;
         this.currentGoalContributionId = null;
         this.currentGoalContributionAmount = '';
@@ -20,6 +24,11 @@ class MoneyTracker {
         this.recFreq = 'weekly';
         this.editingRecurringId = null;
         this.pendingDeleteRecurringId = null;
+        this._lastBalance = null;
+        this._pinBuffer = '';
+        this.pin = this.loadPin();
+        this.pinEnabled = this.loadPinEnabled();
+        this.loadExchangeRates();
         this.initElements();
         this.updateAmountInputMode();
         this.setupEventListeners();
@@ -31,7 +40,9 @@ class MoneyTracker {
         this.renderRecurringList();
         this.renderRecurringAnalytics();
         this.renderQuickAdds();
+        this.renderSettingsQuickAdds();
         this.showScreen('home');
+        if (this.pinEnabled && this.pin) setTimeout(() => this.lockApp(), 100);
     }
 
     initTheme() {
@@ -81,6 +92,18 @@ class MoneyTracker {
 
     closeSuccess() {
         document.getElementById('successModal').style.display = 'none';
+    }
+
+    haptic(pattern = 15) {
+        if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
+    emptyStateHtml(icon, title, subtitle = '') {
+        return `<div class="empty-state-rich">
+            <div class="empty-state-icon">${icon}</div>
+            <div class="empty-state-title">${title}</div>
+            ${subtitle ? `<div class="empty-state-subtitle">${subtitle}</div>` : ''}
+        </div>`;
     }
 
     initElements() {
@@ -336,8 +359,8 @@ class MoneyTracker {
             return;
         }
 
-        const amount = parseFloat(amountInput.value);
-        if (amount <= 0) {
+        const rawAmount = parseFloat(amountInput.value);
+        if (rawAmount <= 0) {
             this.showError('Amount must be greater than 0');
             return;
         }
@@ -349,10 +372,15 @@ class MoneyTracker {
 
         const description = descriptionInput ? descriptionInput.value.trim() : '';
 
+        // Multi-currency: use selected pill currency (spend) or base (add)
+        const txCurrency = (type === 'spend' && this.multiCurrencyEnabled && this._spendCurrency)
+            ? this._spendCurrency : this.currency;
+        const convertedAmount = (txCurrency !== this.currency) ? this.convertToBaseCurrency(rawAmount, txCurrency) : rawAmount;
+
         const transaction = {
             id: Date.now(),
             description: type === 'spend' ? (description || categorySelect.value) : (description || 'Added Money'),
-            amount: amount,
+            amount: convertedAmount,
             type: type,
             category: type === 'spend' ? categorySelect.value : null,
             date: new Date().toLocaleDateString('en-US', {
@@ -363,6 +391,11 @@ class MoneyTracker {
                 minute: '2-digit'
             }),
         };
+
+        if (txCurrency !== this.currency) {
+            transaction.originalAmount = rawAmount;
+            transaction.originalCurrency = txCurrency;
+        }
 
         this.transactions.unshift(transaction);
         this.saveTransactions();
@@ -381,6 +414,7 @@ class MoneyTracker {
         }
 
         this.render();
+        this.haptic();
     }
 
     animateDeleteTransaction(id) {
@@ -472,9 +506,7 @@ class MoneyTracker {
         const addMoneyModal = document.getElementById('addMoneyModal');
         if (addMoneyModal) {
             addMoneyModal.style.display = 'flex';
-            setTimeout(() => {
-                document.getElementById('amount').focus();
-            }, 100);
+            setTimeout(() => { document.getElementById('amount').focus(); }, 100);
             document.getElementById('amount').value = '';
             document.getElementById('description').value = '';
         }
@@ -494,11 +526,10 @@ class MoneyTracker {
         if (spendMoneyModal) {
             spendMoneyModal.style.display = 'flex';
             this.updateCategoryPillsSpend();
-            setTimeout(() => {
-                document.getElementById('amountSpend').focus();
-            }, 100);
+            setTimeout(() => { document.getElementById('amountSpend').focus(); }, 100);
             document.getElementById('amountSpend').value = '';
             document.getElementById('descriptionSpend').value = '';
+            this.renderSpendCurrencyPills();
         }
     }
 
@@ -509,6 +540,7 @@ class MoneyTracker {
             document.getElementById('amountSpend').value = '';
             document.getElementById('descriptionSpend').value = '';
             document.getElementById('numberPadSpend').style.display = 'none';
+            this._spendCurrency = this.currency;
         }
     }
 
@@ -566,11 +598,14 @@ class MoneyTracker {
 
     renderHistoryTransactions(transactions) {
         if (transactions.length === 0) {
-            this.historyTransactionsList.innerHTML = '<p class="empty-state">No transactions found.</p>';
+            this.historyTransactionsList.innerHTML = this.emptyStateHtml('📭', 'No transactions found', 'Try adjusting your search');
             return;
         }
 
         this.historyTransactionsList.innerHTML = transactions.map(transaction => {
+            const origInfo = transaction.originalCurrency
+                ? ` <span style="font-size:0.8em;opacity:0.7">(${transaction.originalCurrency} ${transaction.originalAmount?.toFixed(2)})</span>`
+                : '';
             return `
                 <div class="history-transaction-item ${transaction.type}" data-id="${transaction.id}">
                     <div class="history-transaction-info">
@@ -579,7 +614,7 @@ class MoneyTracker {
                     </div>
                     <div class="history-transaction-actions">
                         <div class="history-transaction-amount ${transaction.type}">
-                            ${transaction.type === 'add' ? '+' : '-'}${this.formatCurrency(transaction.amount)}
+                            ${transaction.type === 'add' ? '+' : '-'}${this.formatCurrency(transaction.amount)}${origInfo}
                         </div>
                         <div class="transaction-actions">
                             <button type="button" class="btn-edit" onclick="tracker.openEditModal(${transaction.id})" title="Edit">✏️</button>
@@ -779,6 +814,7 @@ class MoneyTracker {
         this.renderMonthlyStats();
         this.renderStats();
         this.renderCategoryBreakdown();
+        this.renderInsights();
     }
 
     renderCharts() {
@@ -787,14 +823,51 @@ class MoneyTracker {
         this.renderRecurringAnalytics();
     }
 
+    animateBalance(element, toValue) {
+        const fromValue = this._lastBalance;
+        this._lastBalance = toValue;
+
+        const toStr = this.formatCurrency(toValue);
+
+        if (fromValue === null || fromValue === toValue) {
+            element.textContent = toStr;
+            return;
+        }
+
+        const fromStr = this.formatCurrency(fromValue);
+        if (fromStr === toStr) return;
+
+        // Different string lengths (e.g. crossing 1000): just swap instantly
+        if (fromStr.length !== toStr.length) {
+            element.textContent = toStr;
+            return;
+        }
+
+        const dir = toValue > fromValue ? 'up' : 'down';
+        let html = '';
+        for (let i = 0; i < toStr.length; i++) {
+            const fc = fromStr[i];
+            const tc = toStr[i];
+            if (fc === tc) {
+                html += `<span class="bal-char">${tc}</span>`;
+            } else {
+                html += `<span class="bal-digit-slot">` +
+                    `<span class="bal-digit bal-digit-${dir}-old">${fc}</span>` +
+                    `<span class="bal-digit bal-digit-${dir}-new">${tc}</span>` +
+                    `</span>`;
+            }
+        }
+        element.innerHTML = html;
+    }
+
     renderBalance() {
         const balance = this.calculateBalance();
-        const formattedBalance = this.formatCurrency(balance);
-        this.totalBalance.textContent = formattedBalance;
+
+        this.animateBalance(this.totalBalance, balance);
 
         const balanceMinimal = document.getElementById('balanceMinimal');
         if (balanceMinimal) {
-            balanceMinimal.textContent = formattedBalance;
+            this.animateBalance(balanceMinimal, balance);
             const balanceDisplay = document.querySelector('.balance-display-minimal');
             if (balance < 0) {
                 balanceDisplay.classList.add('negative');
@@ -835,7 +908,7 @@ class MoneyTracker {
         const totalSpent = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
 
         if (Object.keys(breakdown).length === 0) {
-            document.getElementById('categoryBreakdown').innerHTML = '<p class="empty-state">No spending yet</p>';
+            document.getElementById('categoryBreakdown').innerHTML = this.emptyStateHtml('📊', 'No spending yet', 'Start tracking your expenses');
             return;
         }
 
@@ -845,11 +918,19 @@ class MoneyTracker {
 
         document.getElementById('categoryBreakdown').innerHTML = sorted.map(([cat, amount]) => {
             const percent = ((amount / totalSpent) * 100).toFixed(1);
+            const budget = this.budgets[cat];
+            const budgetBar = budget ? `
+                <div class="budget-progress-wrap">
+                    <div class="budget-progress-bar" style="width:${Math.min((amount / budget) * 100, 100)}%; background:${amount > budget ? '#f87171' : amount / budget > 0.8 ? '#fbbf24' : '#4ade80'}"></div>
+                </div>
+                <div class="budget-label">${this.formatCurrency(amount)} / ${this.formatCurrency(budget)}</div>
+            ` : '';
             return `
                 <div class="category-item-breakdown">
                     <div class="category-name">${this.escapeHtml(cat)}</div>
                     <div class="category-amount">${this.formatCurrency(amount)}</div>
                     <div class="category-percent">${percent}%</div>
+                    ${budgetBar}
                 </div>
             `;
         }).join('');
@@ -904,6 +985,9 @@ class MoneyTracker {
                 this.numberPadToggle.checked = this.useNumberPad;
                 this.updateLanguageButtons();
                 this.updateCurrencyButtons();
+                this.renderBudgetsSection();
+                this.renderPinSection();
+                this.renderSecondaryCurrencySection();
             }
         }
 
@@ -1138,7 +1222,7 @@ class MoneyTracker {
         if (!container) return;
 
         if (this.goals.length === 0) {
-            container.innerHTML = '<p class="empty-state">No goals yet. Create one to get started!</p>';
+            container.innerHTML = this.emptyStateHtml('🎯', 'No goals yet', 'Create one above to start saving!');
             return;
         }
 
@@ -1514,6 +1598,81 @@ class MoneyTracker {
         return localStorage.getItem('moneyTrackerCurrency') || 'USD';
     }
 
+    loadMultiCurrency() {
+        return localStorage.getItem('moneyTrackerMultiCurrency') === 'true';
+    }
+
+    loadSecondaryCurrencies() {
+        const s = localStorage.getItem('moneyTrackerSecondaryCurrencies');
+        return s ? JSON.parse(s) : [];
+    }
+
+    saveSecondaryCurrencies() {
+        localStorage.setItem('moneyTrackerSecondaryCurrencies', JSON.stringify(this.secondaryCurrencies));
+    }
+
+    toggleMultiCurrency(enabled) {
+        this.multiCurrencyEnabled = enabled;
+        localStorage.setItem('moneyTrackerMultiCurrency', String(enabled));
+        if (!enabled) this._spendCurrency = this.currency;
+        this.renderSecondaryCurrencySection();
+    }
+
+    toggleSecondaryCurrency(curr) {
+        if (curr === this.currency) return;
+        const idx = this.secondaryCurrencies.indexOf(curr);
+        if (idx === -1) this.secondaryCurrencies.push(curr);
+        else this.secondaryCurrencies.splice(idx, 1);
+        this.saveSecondaryCurrencies();
+        this.renderSecondaryCurrencySection();
+    }
+
+    renderSecondaryCurrencySection() {
+        const toggle = document.getElementById('multiCurrencyToggle');
+        if (toggle) toggle.checked = this.multiCurrencyEnabled;
+        const panel = document.getElementById('secondaryCurrencyPills');
+        if (!panel) return;
+        panel.style.display = this.multiCurrencyEnabled ? '' : 'none';
+        const container = document.getElementById('secondaryCurrencyOptions');
+        if (!container) return;
+        const all = this.getAvailableCurrencies();
+        const symbols = { USD:'$',EUR:'€',GBP:'£',JPY:'¥',QAR:'ر.ق',AED:'د.إ',SAR:'﷼',EGP:'£',INR:'₹' };
+        container.innerHTML = all.map(c => {
+            const isBase = c === this.currency;
+            const isActive = isBase || this.secondaryCurrencies.includes(c);
+            return `<button class="sec-currency-pill ${isActive ? 'active' : ''} ${isBase ? 'base' : ''}"
+                onclick="${isBase ? '' : `tracker.toggleSecondaryCurrency('${c}')`}"
+                ${isBase ? 'disabled' : ''}>
+                ${symbols[c] || ''} ${c}${isBase ? ' ✓' : ''}
+            </button>`;
+        }).join('');
+    }
+
+    renderSpendCurrencyPills() {
+        const group = document.getElementById('spendCurrencyGroup');
+        const container = document.getElementById('spendCurrencyPills');
+        if (!group || !container) return;
+        if (!this.multiCurrencyEnabled || this.secondaryCurrencies.length === 0) {
+            group.style.display = 'none';
+            this._spendCurrency = this.currency;
+            return;
+        }
+        group.style.display = '';
+        this._spendCurrency = this._spendCurrency || this.currency;
+        const allCurrencies = [this.currency, ...this.secondaryCurrencies];
+        const symbols = { USD:'$',EUR:'€',GBP:'£',JPY:'¥',QAR:'ر.ق',AED:'د.إ',SAR:'﷼',EGP:'£',INR:'₹' };
+        container.innerHTML = allCurrencies.map(c => `
+            <button type="button" class="spend-currency-pill ${this._spendCurrency === c ? 'active' : ''}"
+                onclick="tracker.selectSpendCurrency('${c}')">
+                ${symbols[c] || ''} ${c}
+            </button>`).join('');
+    }
+
+    selectSpendCurrency(curr) {
+        this._spendCurrency = curr;
+        this.renderSpendCurrencyPills();
+    }
+
     loadGoals() {
         const saved = localStorage.getItem('moneyTrackerGoals');
         return saved ? JSON.parse(saved) : [];
@@ -1563,11 +1722,13 @@ class MoneyTracker {
 
     renderQuickAdds() {
         const container = document.getElementById('quickAddsList');
+        const section = document.getElementById('quickAddsSection');
         if (!container) return;
         if (this.quickAdds.length === 0) {
-            container.innerHTML = '<p class="quick-adds-empty">Tap <strong>+ New</strong> to create a shortcut</p>';
+            if (section) section.style.display = 'none';
             return;
         }
+        if (section) section.style.display = '';
         container.innerHTML = this.quickAdds.map(qa => {
             const isPending = this.pendingDeleteQuickAddId === qa.id;
             return `
@@ -1582,38 +1743,48 @@ class MoneyTracker {
         `}).join('');
     }
 
-    openQuickAddSetup() {
-        this.qaType = 'spend';
-        document.getElementById('qaDesc').value = '';
-        document.getElementById('qaAmount').value = '';
-        document.querySelectorAll('#quickAddSetupModal .rec-type-pill').forEach(p => {
-            p.classList.toggle('active', p.dataset.type === 'spend');
-        });
-        document.getElementById('quickAddSetupModal').style.display = 'flex';
-        setTimeout(() => document.getElementById('qaDesc').focus(), 100);
-    }
-
-    closeQuickAddSetup() {
-        document.getElementById('quickAddSetupModal').style.display = 'none';
-    }
-
     setQAType(type) {
         this.qaType = type;
-        document.querySelectorAll('#quickAddSetupModal .rec-type-pill').forEach(p => {
+        document.querySelectorAll('.settings-qa-form .rec-type-pill').forEach(p => {
             p.classList.toggle('active', p.dataset.type === type);
         });
     }
 
     saveQuickAdd() {
-        const desc = document.getElementById('qaDesc').value.trim();
-        const amount = parseFloat(document.getElementById('qaAmount').value);
+        const desc = document.getElementById('settingsQaDesc').value.trim();
+        const amount = parseFloat(document.getElementById('settingsQaAmount').value);
         if (!desc) { this.showError('Please enter a description'); return; }
         if (!amount || amount <= 0) { this.showError('Please enter a valid amount'); return; }
         if (this.quickAdds.length >= 8) { this.showError('Maximum 8 quick adds allowed'); return; }
         this.quickAdds.push({ id: Date.now(), description: desc, amount, type: this.qaType });
         this.saveQuickAdds();
+        document.getElementById('settingsQaDesc').value = '';
+        document.getElementById('settingsQaAmount').value = '';
+        this.qaType = 'spend';
+        document.querySelectorAll('.settings-qa-form .rec-type-pill').forEach(p => {
+            p.classList.toggle('active', p.dataset.type === 'spend');
+        });
         this.renderQuickAdds();
-        this.closeQuickAddSetup();
+        this.renderSettingsQuickAdds();
+    }
+
+    renderSettingsQuickAdds() {
+        const container = document.getElementById('settingsQuickAddsList');
+        if (!container) return;
+        if (this.quickAdds.length === 0) {
+            container.innerHTML = this.emptyStateHtml('⚡', 'No shortcuts yet', 'Add one below for one-tap transactions');
+            return;
+        }
+        container.innerHTML = this.quickAdds.map(qa => {
+            const isPending = this.pendingDeleteQuickAddId === qa.id;
+            return `
+            <div class="settings-qa-item">
+                <span class="settings-qa-dot" style="background:${qa.type === 'add' ? '#10b981' : '#ef4444'}"></span>
+                <span class="settings-qa-name">${this.escapeHtml(qa.description)}</span>
+                <span class="settings-qa-amt">${this.formatCurrency(qa.amount)}</span>
+                <button class="btn-remove-recurring${isPending ? ' confirm' : ''}" onclick="tracker.deleteQuickAdd(${qa.id})">${isPending ? 'Sure?' : '✕'}</button>
+            </div>`;
+        }).join('');
     }
 
     deleteQuickAdd(id) {
@@ -1622,13 +1793,16 @@ class MoneyTracker {
             this.pendingDeleteQuickAddId = null;
             this.saveQuickAdds();
             this.renderQuickAdds();
+            this.renderSettingsQuickAdds();
         } else {
             this.pendingDeleteQuickAddId = id;
             this.renderQuickAdds();
+            this.renderSettingsQuickAdds();
             setTimeout(() => {
                 if (this.pendingDeleteQuickAddId === id) {
                     this.pendingDeleteQuickAddId = null;
                     this.renderQuickAdds();
+                    this.renderSettingsQuickAdds();
                 }
             }, 3000);
         }
@@ -1654,6 +1828,7 @@ class MoneyTracker {
         });
         this.saveTransactions();
         this.render();
+        this.haptic();
 
         // Flash the card to confirm
         const cards = document.querySelectorAll('.quick-add-card');
@@ -1668,6 +1843,7 @@ class MoneyTracker {
     checkRecurring() {
         const todayStr = new Date().toISOString().split('T')[0];
         let fired = false;
+        const firedNames = [];
         this.recurring.forEach(rec => {
             if (todayStr >= rec.nextDue) {
                 this.transactions.unshift({
@@ -1687,9 +1863,22 @@ class MoneyTracker {
                 else due.setMonth(due.getMonth() + 1);
                 rec.nextDue = due.toISOString().split('T')[0];
                 fired = true;
+                firedNames.push(rec.description);
             }
         });
-        if (fired) { this.saveTransactions(); this.saveRecurring(); }
+        if (fired) {
+            this.saveTransactions();
+            this.saveRecurring();
+            setTimeout(() => this.showRecurringBanner(firedNames), 500);
+        }
+    }
+
+    showRecurringBanner(names) {
+        const el = document.getElementById('recurringFiredBanner');
+        if (!el) return;
+        el.innerHTML = `<span>🔄 Auto-applied: ${names.join(', ')}</span><button onclick="document.getElementById('recurringFiredBanner').style.display='none'">✕</button>`;
+        el.style.display = 'flex';
+        setTimeout(() => { if (el) el.style.display = 'none'; }, 6000);
     }
 
     openRecurringModal(id) {
@@ -1764,7 +1953,7 @@ class MoneyTracker {
         const container = document.getElementById('recurringList');
         if (!container) return;
         if (this.recurring.length === 0) {
-            container.innerHTML = '<p class="empty-state" style="padding:12px 0;font-size:0.85em;">No recurring transactions</p>';
+            container.innerHTML = this.emptyStateHtml('🔄', 'No recurring transactions', 'Add one to automate your finances');
             return;
         }
         container.innerHTML = this.recurring.map(rec => {
@@ -1936,6 +2125,316 @@ class MoneyTracker {
             }
         };
         reader.readAsText(file);
+    }
+
+    // ── Budgets ────────────────────────────────────────────────
+    loadBudgets() {
+        const s = localStorage.getItem('moneyTrackerBudgets');
+        return s ? JSON.parse(s) : {};
+    }
+
+    saveBudgets() {
+        localStorage.setItem('moneyTrackerBudgets', JSON.stringify(this.budgets));
+    }
+
+    setBudget(cat, val) {
+        if (val > 0) {
+            this.budgets[cat] = val;
+        } else {
+            delete this.budgets[cat];
+        }
+        this.saveBudgets();
+        this.render();
+    }
+
+    renderBudgetsSection() {
+        const el = document.getElementById('budgetsList');
+        if (!el) return;
+        if (this.categories.length === 0) {
+            el.innerHTML = '<p class="empty-state" style="padding:10px 0;font-size:0.85em;">No categories defined</p>';
+            return;
+        }
+        el.innerHTML = this.categories.map(cat => {
+            const currentBudget = this.budgets[cat] || '';
+            return `
+                <div class="budget-input-row">
+                    <span class="budget-cat-name">${this.escapeHtml(cat)}</span>
+                    <input type="text" inputmode="decimal" class="budget-cat-input" placeholder="No limit"
+                        value="${currentBudget}"
+                        onchange="tracker.setBudget('${this.escapeHtml(cat)}', parseFloat(this.value)||0)">
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ── Insights ───────────────────────────────────────────────
+    renderInsights() {
+        const el = document.getElementById('insightsSection');
+        if (!el) return;
+        const insights = this.getSpendingInsights();
+        if (!insights.length) { el.style.display = 'none'; return; }
+        el.style.display = '';
+        el.innerHTML = `<div class="insights-header">💡 Insights</div>` +
+            insights.map(i => `<div class="insight-card insight-${i.type}">${i.text}</div>`).join('');
+    }
+
+    getSpendingInsights() {
+        const now = new Date();
+        const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay()); thisWeekStart.setHours(0, 0, 0, 0);
+        const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const thisWeek = {}, lastWeek = {}, thisMonth = {};
+        this.transactions.filter(t => t.type === 'spend').forEach(t => {
+            const d = new Date(t.date); if (isNaN(d)) return;
+            const cat = t.category || 'Other';
+            if (d >= thisWeekStart) thisWeek[cat] = (thisWeek[cat] || 0) + t.amount;
+            else if (d >= lastWeekStart) lastWeek[cat] = (lastWeek[cat] || 0) + t.amount;
+            if (d >= thisMonthStart) thisMonth[cat] = (thisMonth[cat] || 0) + t.amount;
+        });
+        const insights = [];
+        Object.entries(thisWeek).forEach(([cat, amt]) => {
+            const last = lastWeek[cat] || 0;
+            if (last > 0) {
+                const change = ((amt - last) / last) * 100;
+                if (change <= -20) insights.push({ type: 'positive', text: `${Math.abs(Math.round(change))}% less on ${cat} vs last week 🎉` });
+                else if (change >= 25) insights.push({ type: 'warning', text: `${Math.round(change)}% more on ${cat} vs last week ⚠️` });
+            }
+        });
+        Object.entries(this.budgets).forEach(([cat, budget]) => {
+            const spent = thisMonth[cat] || 0; const pct = (spent / budget) * 100;
+            if (pct >= 100) insights.push({ type: 'danger', text: `${cat} budget exceeded! ${this.formatCurrency(spent)}/${this.formatCurrency(budget)} ⛔` });
+            else if (pct >= 80) insights.push({ type: 'warning', text: `${cat} at ${Math.round(pct)}% of budget this month ⚠️` });
+        });
+        return insights.slice(0, 3);
+    }
+
+    // ── PIN / Biometric lock ───────────────────────────────────
+    loadPin() { return localStorage.getItem('moneyTrackerPin') || null; }
+    savePinData(pin) { localStorage.setItem('moneyTrackerPin', pin); }
+    loadPinEnabled() { return localStorage.getItem('moneyTrackerPinEnabled') === 'true'; }
+    savePinEnabled(v) { localStorage.setItem('moneyTrackerPinEnabled', String(v)); }
+
+    lockApp() {
+        this._pinBuffer = '';
+        const el = document.getElementById('pinLockOverlay');
+        if (el) el.style.display = 'flex';
+    }
+
+    unlockApp() {
+        const el = document.getElementById('pinLockOverlay');
+        if (el) el.style.display = 'none';
+        this._pinBuffer = '';
+        document.getElementById('pinDots')?.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+    }
+
+    addPinDigit(d) {
+        if (this._pinBuffer === undefined) this._pinBuffer = '';
+        if (this._pinBuffer.length >= 4) return;
+        this._pinBuffer = (this._pinBuffer || '') + d;
+        const dots = document.getElementById('pinDots')?.querySelectorAll('.pin-dot');
+        if (dots) dots[this._pinBuffer.length - 1]?.classList.add('filled');
+        if (this._pinBuffer.length === 4) setTimeout(() => this.checkPinEntry(), 200);
+    }
+
+    deletePinDigit() {
+        if (!this._pinBuffer || !this._pinBuffer.length) return;
+        const dots = document.getElementById('pinDots')?.querySelectorAll('.pin-dot');
+        if (dots) dots[this._pinBuffer.length - 1]?.classList.remove('filled');
+        this._pinBuffer = this._pinBuffer.slice(0, -1);
+    }
+
+    checkPinEntry() {
+        if (this._pinBuffer === this.pin) {
+            this.unlockApp();
+        } else {
+            this._pinBuffer = '';
+            document.getElementById('pinDots')?.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+            const errEl = document.getElementById('pinError');
+            if (errEl) {
+                errEl.classList.add('shake');
+                setTimeout(() => errEl.classList.remove('shake'), 500);
+                errEl.textContent = 'Incorrect PIN';
+            }
+        }
+    }
+
+    async tryBiometric() {
+        if (!window.PublicKeyCredential) return;
+        try {
+            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            if (!available) return;
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge: crypto.getRandomValues(new Uint8Array(32)),
+                    timeout: 60000,
+                    userVerification: 'required',
+                    rpId: window.location.hostname || 'localhost',
+                    allowCredentials: []
+                }
+            });
+            this.unlockApp();
+        } catch (e) { /* user cancelled or not enrolled */ }
+    }
+
+    enablePinSetting(pin) {
+        this.pin = pin;
+        this.pinEnabled = true;
+        this.savePinData(pin);
+        this.savePinEnabled(true);
+    }
+
+    disablePinSetting() {
+        this.pin = null;
+        this.pinEnabled = false;
+        localStorage.removeItem('moneyTrackerPin');
+        this.savePinEnabled(false);
+    }
+
+    renderPinSection() {
+        const el = document.getElementById('pinSettingSection');
+        if (!el) return;
+        if (this.pinEnabled && this.pin) {
+            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong>Enabled</strong></span><button class="btn-reset-balance" onclick="tracker.promptDisablePin()" style="padding:8px 18px">Disable PIN</button></div>`;
+        } else if (this.pinEnabled && !this.pin) {
+            // corrupted state — pinEnabled but no PIN stored; offer direct reset
+            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong style="color:var(--danger)">Error</strong></span><button class="btn-reset-balance" onclick="tracker.disablePinSetting();tracker.renderPinSection();" style="padding:8px 18px">Reset PIN</button></div>`;
+        } else {
+            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock</span><button class="btn-submit-modal" onclick="tracker.promptSetPin()" style="padding:8px 18px;font-size:0.9em">Set PIN</button></div>`;
+        }
+    }
+
+    promptSetPin() {
+        this._setupMode = 'set';
+        this._setupStep = 'enter';
+        this._setupBuffer = '';
+        this._setupFirstPin = '';
+        document.getElementById('pinSetupIcon').textContent = '🔐';
+        document.getElementById('pinSetupStep').textContent = 'Step 1 of 2';
+        document.getElementById('pinSetupTitle').textContent = 'Create your PIN';
+        document.getElementById('pinSetupSubtitle').textContent = 'Choose a 4-digit PIN';
+        document.getElementById('pinSetupError').textContent = '';
+        document.getElementById('pinSetupDots').querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+        document.getElementById('pinSetupOverlay').style.display = 'flex';
+    }
+
+    promptDisablePin() {
+        this._setupMode = 'disable';
+        this._setupStep = 'enter';
+        this._setupBuffer = '';
+        document.getElementById('pinSetupIcon').textContent = '🔓';
+        document.getElementById('pinSetupStep').textContent = 'Verification';
+        document.getElementById('pinSetupTitle').textContent = 'Disable PIN Lock';
+        document.getElementById('pinSetupSubtitle').textContent = 'Enter your current PIN to confirm';
+        document.getElementById('pinSetupError').textContent = '';
+        document.getElementById('pinSetupDots').querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+        document.getElementById('pinSetupOverlay').style.display = 'flex';
+    }
+
+    setupAddDigit(d) {
+        if (this._setupBuffer === undefined) this._setupBuffer = '';
+        if (this._setupBuffer.length >= 4) return;
+        this._setupBuffer = (this._setupBuffer || '') + d;
+        const dots = document.getElementById('pinSetupDots').querySelectorAll('.pin-dot');
+        dots[this._setupBuffer.length - 1]?.classList.add('filled');
+        if (this._setupBuffer.length === 4) setTimeout(() => this._processSetupEntry(), 220);
+    }
+
+    setupDeleteDigit() {
+        if (!this._setupBuffer?.length) return;
+        const dots = document.getElementById('pinSetupDots').querySelectorAll('.pin-dot');
+        dots[this._setupBuffer.length - 1]?.classList.remove('filled');
+        this._setupBuffer = this._setupBuffer.slice(0, -1);
+    }
+
+    _processSetupEntry() {
+        const errEl = document.getElementById('pinSetupError');
+        if (this._setupMode === 'disable') {
+            if (this._setupBuffer === this.pin) {
+                this.closePinSetup();
+                this.disablePinSetting();
+                this.renderPinSection();
+                this.showSuccess('PIN disabled');
+            } else {
+                this._setupBuffer = '';
+                document.getElementById('pinSetupDots').querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+                errEl.textContent = 'Incorrect PIN — try again';
+                errEl.classList.add('shake');
+                setTimeout(() => errEl.classList.remove('shake'), 500);
+            }
+            return;
+        }
+        if (this._setupStep === 'enter') {
+            this._setupFirstPin = this._setupBuffer;
+            this._setupBuffer = '';
+            this._setupStep = 'confirm';
+            document.getElementById('pinSetupStep').textContent = 'Step 2 of 2';
+            document.getElementById('pinSetupTitle').textContent = 'Confirm your PIN';
+            document.getElementById('pinSetupSubtitle').textContent = 'Re-enter the same PIN';
+            document.getElementById('pinSetupDots').querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+            errEl.textContent = '';
+        } else {
+            if (this._setupBuffer === this._setupFirstPin) {
+                const pinToSave = this._setupBuffer;
+                this.enablePinSetting(pinToSave);
+                this.closePinSetup();
+                this.renderPinSection();
+                this.showSuccess('PIN lock enabled!');
+            } else {
+                this._setupBuffer = '';
+                this._setupStep = 'enter';
+                this._setupFirstPin = '';
+                document.getElementById('pinSetupStep').textContent = 'Step 1 of 2';
+                document.getElementById('pinSetupTitle').textContent = 'Create your PIN';
+                document.getElementById('pinSetupSubtitle').textContent = 'Choose a 4-digit PIN';
+                document.getElementById('pinSetupDots').querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+                errEl.textContent = "PINs didn't match — start over";
+                errEl.classList.add('shake');
+                setTimeout(() => errEl.classList.remove('shake'), 500);
+            }
+        }
+    }
+
+    closePinSetup() {
+        document.getElementById('pinSetupOverlay').style.display = 'none';
+        this._setupBuffer = '';
+        this._setupStep = 'enter';
+        this._setupFirstPin = '';
+    }
+
+    // ── Multi-currency ─────────────────────────────────────────
+    loadExchangeRates() {
+        const cached = localStorage.getItem('moneyTrackerRates');
+        const t = parseInt(localStorage.getItem('moneyTrackerRatesTime') || '0');
+        const fallback = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149, QAR: 3.64, AED: 3.67, SAR: 3.75, EGP: 30.9, INR: 83.1 };
+        if (cached && Date.now() - t < 86400000) { this.exchangeRates = JSON.parse(cached); return; }
+        fetch('https://open.er-api.com/v6/latest/USD')
+            .then(r => r.json()).then(d => {
+                if (d.result === 'success') {
+                    this.exchangeRates = d.rates;
+                    localStorage.setItem('moneyTrackerRates', JSON.stringify(d.rates));
+                    localStorage.setItem('moneyTrackerRatesTime', String(Date.now()));
+                }
+            }).catch(() => { this.exchangeRates = fallback; });
+        this.exchangeRates = fallback;
+    }
+
+    convertToBaseCurrency(amount, fromCurrency) {
+        if (!this.exchangeRates || fromCurrency === this.currency) return amount;
+        const from = this.exchangeRates[fromCurrency] || 1;
+        const to = this.exchangeRates[this.currency] || 1;
+        return (amount / from) * to;
+    }
+
+    getAvailableCurrencies() {
+        return ['USD', 'EUR', 'GBP', 'JPY', 'QAR', 'AED', 'SAR', 'EGP', 'INR'];
+    }
+
+    populateCurrencySelect(selectId) {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const currencies = this.getAvailableCurrencies();
+        sel.innerHTML = `<option value="">Base currency (${this.currency})</option>` +
+            currencies.filter(c => c !== this.currency).map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
     // ── Confetti ───────────────────────────────────────────────
