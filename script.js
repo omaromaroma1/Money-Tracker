@@ -1659,6 +1659,13 @@ class MoneyTracker {
                 ${symbols[c] || ''} ${c}${isBase ? ' ✓' : ''}
             </button>`;
         }).join('');
+        const body = panel.closest('.setting-accordion-body');
+        if (body) {
+            const acc = body.closest('.setting-accordion');
+            if (acc && acc.classList.contains('open')) {
+                body.style.maxHeight = body.scrollHeight + 'px';
+            }
+        }
     }
 
     renderSpendCurrencyPills() {
@@ -1791,12 +1798,14 @@ class MoneyTracker {
         container.innerHTML = this.quickAdds.map(qa => {
             const isPending = this.pendingDeleteQuickAddId === qa.id;
             return `
-            <div class="settings-qa-item">
-                <span class="settings-qa-dot" style="background:${qa.type === 'add' ? '#10b981' : '#ef4444'}"></span>
-                <span class="settings-qa-name">${this.escapeHtml(qa.description)}</span>
-                <span class="settings-qa-amt">${this.formatCurrency(qa.amount)}</span>
-                <button class="btn-remove-recurring${isPending ? ' confirm' : ''}" onclick="tracker.deleteQuickAdd(${qa.id})">${isPending ? 'Sure?' : '✕'}</button>
-            </div>`;
+<div class="settings-qa-item">
+    <div class="settings-qa-type-badge ${qa.type === 'add' ? 'income' : 'expense'}">${qa.type === 'add' ? '＋' : '－'}</div>
+    <div class="settings-qa-info">
+        <span class="settings-qa-name">${this.escapeHtml(qa.description)}</span>
+        <span class="settings-qa-amt">${this.formatCurrency(qa.amount)}</span>
+    </div>
+    <button class="settings-qa-delete${isPending ? ' confirm' : ''}" onclick="tracker.deleteQuickAdd(${qa.id})">${isPending ? 'Sure?' : '✕'}</button>
+</div>`;
         }).join('');
     }
 
@@ -1974,19 +1983,23 @@ class MoneyTracker {
             const freqLabel = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[rec.frequency] || rec.frequency;
             const typeColor = rec.type === 'add' ? '#10b981' : '#ef4444';
             return `
-            <div class="recurring-item">
-                <div class="recurring-item-left">
-                    <span class="recurring-type-dot" style="background:${typeColor}"></span>
-                    <div class="recurring-info">
-                        <span class="recurring-desc">${this.escapeHtml(rec.description)}</span>
-                        <span class="recurring-meta">${freqLabel} · ${this.formatCurrency(rec.amount)} · next: ${rec.nextDue}</span>
-                    </div>
-                </div>
-                <div class="recurring-actions">
-                    <button type="button" class="btn-edit-recurring" onclick="tracker.openRecurringModal(${rec.id})" title="Edit">✏️</button>
-                    <button type="button" class="btn-remove-recurring ${isPending ? 'confirm' : ''}" onclick="tracker.deleteRecurring(${rec.id})">${isPending ? 'Sure?' : '✕'}</button>
-                </div>
-            </div>`;
+<div class="recurring-item">
+    <div class="recurring-type-bar" style="background:${typeColor}"></div>
+    <div class="recurring-item-body">
+        <div class="recurring-item-top">
+            <span class="recurring-desc">${this.escapeHtml(rec.description)}</span>
+            <span class="recurring-amount" style="color:${typeColor}">${rec.type === 'add' ? '+' : '-'}${this.formatCurrency(rec.amount)}</span>
+        </div>
+        <div class="recurring-item-bottom">
+            <span class="recurring-freq-pill">${freqLabel}</span>
+            <span class="recurring-next">next ${rec.nextDue}</span>
+        </div>
+    </div>
+    <div class="recurring-actions">
+        <button type="button" class="btn-edit-recurring" onclick="tracker.openRecurringModal(${rec.id})" title="Edit">✏️</button>
+        <button type="button" class="btn-remove-recurring ${isPending ? 'confirm' : ''}" onclick="tracker.deleteRecurring(${rec.id})">${isPending ? '✓ Sure?' : '✕'}</button>
+    </div>
+</div>`;
         }).join('');
     }
 
@@ -2170,13 +2183,12 @@ class MoneyTracker {
         el.innerHTML = this.categories.map(cat => {
             const currentBudget = this.budgets[cat] || '';
             return `
-                <div class="budget-input-row">
-                    <span class="budget-cat-name">${this.escapeHtml(cat)}</span>
-                    <input type="text" inputmode="decimal" class="budget-cat-input" placeholder="No limit"
-                        value="${currentBudget}"
-                        onchange="tracker.setBudget('${this.escapeHtml(cat)}', parseFloat(this.value)||0)">
-                </div>
-            `;
+<div class="budget-input-row">
+    <span class="budget-cat-name">${this.escapeHtml(cat)}</span>
+    <input type="text" inputmode="decimal" class="budget-cat-input" placeholder="No limit"
+        value="${currentBudget}"
+        onchange="tracker.setBudget('${this.escapeHtml(cat)}', parseFloat(this.value)||0)">
+</div>`;
         }).join('');
     }
 
@@ -2307,12 +2319,35 @@ class MoneyTracker {
         const el = document.getElementById('pinSettingSection');
         if (!el) return;
         if (this.pinEnabled && this.pin) {
-            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong>Enabled</strong></span><button class="btn-reset-balance" onclick="tracker.promptDisablePin()" style="padding:8px 18px">Disable PIN</button></div>`;
+            el.innerHTML = `
+        <div class="security-setting-row">
+            <div class="security-icon-tile" style="background:rgba(74,222,128,0.12);border-color:rgba(74,222,128,0.3);">🔒</div>
+            <div class="security-info">
+                <span class="security-label">PIN Lock</span>
+                <span class="security-badge on">● Enabled</span>
+            </div>
+            <button class="security-action-btn danger" onclick="tracker.promptDisablePin()">Disable</button>
+        </div>`;
         } else if (this.pinEnabled && !this.pin) {
-            // corrupted state — pinEnabled but no PIN stored; offer direct reset
-            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock: <strong style="color:var(--danger)">Error</strong></span><button class="btn-reset-balance" onclick="tracker.disablePinSetting();tracker.renderPinSection();" style="padding:8px 18px">Reset PIN</button></div>`;
+            el.innerHTML = `
+        <div class="security-setting-row">
+            <div class="security-icon-tile" style="background:rgba(248,113,113,0.12);border-color:rgba(248,113,113,0.3);">⚠️</div>
+            <div class="security-info">
+                <span class="security-label">PIN Lock</span>
+                <span class="security-badge error">● Error</span>
+            </div>
+            <button class="security-action-btn danger" onclick="tracker.disablePinSetting();tracker.renderPinSection();">Reset</button>
+        </div>`;
         } else {
-            el.innerHTML = `<div class="toggle-label-wrapper"><span>PIN Lock</span><button class="btn-submit-modal" onclick="tracker.promptSetPin()" style="padding:8px 18px;font-size:0.9em">Set PIN</button></div>`;
+            el.innerHTML = `
+        <div class="security-setting-row">
+            <div class="security-icon-tile" style="background:rgba(var(--primary-rgb),0.1);border-color:rgba(var(--primary-rgb),0.25);">🔓</div>
+            <div class="security-info">
+                <span class="security-label">PIN Lock</span>
+                <span class="security-badge off">● Disabled</span>
+            </div>
+            <button class="security-action-btn primary" onclick="tracker.promptSetPin()">Set PIN</button>
+        </div>`;
         }
     }
 
