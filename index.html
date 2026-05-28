@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Money Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=36">
+    <link rel="stylesheet" href="styles.css?v=38">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="logo-dark.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -435,11 +435,77 @@
                             <svg class="setting-accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         <div class="setting-accordion-body">
-                            <div class="toggle-label-wrapper">
-                                <span>Dark / Light Mode</span>
-                                <button class="btn-theme-toggle" onclick="tracker.toggleTheme()" title="Toggle theme">
-                                    <span class="theme-icon">🌙</span>
-                                </button>
+                            <div class="theme-picker" id="themePicker">
+                                <div class="theme-chip" data-theme-id="dark" onclick="tracker.setTheme('dark')">
+                                    <div class="theme-chip-swatch" style="background:#050508; border-color:rgba(34,211,238,0.5);">
+                                        <div class="theme-chip-dot" style="background:#22d3ee;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Galaxy</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="light" onclick="tracker.setTheme('light')">
+                                    <div class="theme-chip-swatch" style="background:#f0fafb; border-color:rgba(8,145,178,0.5);">
+                                        <div class="theme-chip-dot" style="background:#0891b2;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Day</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="ocean" onclick="tracker.setTheme('ocean')">
+                                    <div class="theme-chip-swatch" style="background:#03040f; border-color:rgba(129,140,248,0.5);">
+                                        <div class="theme-chip-dot" style="background:#818cf8;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Ocean</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="sunset" onclick="tracker.setTheme('sunset')">
+                                    <div class="theme-chip-swatch" style="background:#0d0905; border-color:rgba(251,146,60,0.5);">
+                                        <div class="theme-chip-dot" style="background:#fb923c;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Sunset</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="forest" onclick="tracker.setTheme('forest')">
+                                    <div class="theme-chip-swatch" style="background:#030905; border-color:rgba(74,222,128,0.5);">
+                                        <div class="theme-chip-dot" style="background:#4ade80;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Forest</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="rose" onclick="tracker.setTheme('rose')">
+                                    <div class="theme-chip-swatch" style="background:#0c0508; border-color:rgba(244,114,182,0.5);">
+                                        <div class="theme-chip-dot" style="background:#f472b6;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Rose</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="midnight" onclick="tracker.setTheme('midnight')">
+                                    <div class="theme-chip-swatch" style="background:#050309; border-color:rgba(167,139,250,0.5);">
+                                        <div class="theme-chip-dot" style="background:#a78bfa;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Midnight</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="amber" onclick="tracker.setTheme('amber')">
+                                    <div class="theme-chip-swatch" style="background:#0d0a03; border-color:rgba(245,158,11,0.5);">
+                                        <div class="theme-chip-dot" style="background:#f59e0b;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Amber</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="neon" onclick="tracker.setTheme('neon')">
+                                    <div class="theme-chip-swatch" style="background:#010401; border-color:rgba(163,230,53,0.5);">
+                                        <div class="theme-chip-dot" style="background:#a3e635;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Neon</span>
+                                </div>
+                                <div class="theme-chip" data-theme-id="ruby" onclick="tracker.setTheme('ruby')">
+                                    <div class="theme-chip-swatch" style="background:#0d0305; border-color:rgba(251,113,133,0.5);">
+                                        <div class="theme-chip-dot" style="background:#fb7185;"></div>
+                                        <span class="theme-chip-check">✓</span>
+                                    </div>
+                                    <span class="theme-chip-name">Ruby</span>
+                                </div>
                             </div>
                         </div>
                     </div>

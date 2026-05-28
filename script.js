@@ -48,31 +48,32 @@ class MoneyTracker {
     initTheme() {
         const savedTheme = localStorage.getItem('moneyTrackerTheme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        this.updateThemeIcon();
+        this.updateThemeChips();
         this.updateLogoTheme();
     }
 
-    toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('moneyTrackerTheme', newTheme);
-        this.updateThemeIcon();
+    setTheme(themeName) {
+        document.documentElement.setAttribute('data-theme', themeName);
+        localStorage.setItem('moneyTrackerTheme', themeName);
+        this.updateThemeChips();
         this.updateLogoTheme();
+        const analyticsEl = document.getElementById('analyticsScreen');
+        if (analyticsEl && analyticsEl.style.display !== 'none') {
+            setTimeout(() => this.renderCharts(), 50);
+        }
+    }
+
+    updateThemeChips() {
+        const current = document.documentElement.getAttribute('data-theme');
+        document.querySelectorAll('.theme-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.themeId === current);
+        });
     }
 
     updateLogoTheme() {
         const appLogo = document.getElementById('appLogo');
         if (appLogo) {
             appLogo.src = 'logo-dark.png';
-        }
-    }
-
-    updateThemeIcon() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const icon = document.querySelector('.theme-icon');
-        if (icon) {
-            icon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
         }
     }
 
@@ -2490,7 +2491,7 @@ class MoneyTracker {
         });
 
         const maxAmount = Math.max(...days.map(d => d.amount), 1);
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
         if (!rect.width) return;
@@ -2555,7 +2556,8 @@ class MoneyTracker {
             points.push(bal);
         });
 
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
         if (!rect.width) return;
@@ -2581,7 +2583,7 @@ class MoneyTracker {
         const toX = i => pad.left + (points.length < 2 ? cW / 2 : (i / (points.length - 1)) * cW);
         const toY = v => pad.top + cH - ((v - minV) / range) * cH;
         const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
-        grad.addColorStop(0, 'rgba(99,102,241,0.35)'); grad.addColorStop(1, 'rgba(99,102,241,0.02)');
+        grad.addColorStop(0, primaryColor + '59'); grad.addColorStop(1, primaryColor + '05');
         ctx.beginPath();
         ctx.moveTo(toX(0), toY(points[0]));
         points.forEach((v, i) => { if (i > 0) ctx.lineTo(toX(i), toY(v)); });
@@ -2591,11 +2593,11 @@ class MoneyTracker {
         ctx.beginPath();
         ctx.moveTo(toX(0), toY(points[0]));
         points.forEach((v, i) => { if (i > 0) ctx.lineTo(toX(i), toY(v)); });
-        ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.strokeStyle = primaryColor; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
         [0, points.length - 1].forEach(i => {
             ctx.beginPath(); ctx.arc(toX(i), toY(points[i]), 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#6366f1'; ctx.fill();
-            ctx.strokeStyle = isDark ? '#1a1a2e' : '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = primaryColor; ctx.fill();
+            ctx.strokeStyle = isDark ? '#0a0a10' : '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
         });
     }
 }
